@@ -28,7 +28,7 @@
 
 ## 🚀 在线演示
 
-[点击这里体验](https://你的用户名.github.io/lunar-reminder)
+[点击这里体验](https://scorpion2u.github.io/lunar-reminder)
 
 ## 📝 更新日志
 
