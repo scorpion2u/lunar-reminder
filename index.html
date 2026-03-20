@@ -569,6 +569,12 @@
             color: #c43e4c;
             font-weight: bold;
         }
+        
+        .sw-status {
+            font-size: 12px;
+            margin-top: 4px;
+            color: #666;
+        }
 
         .test-button-container {
             position: fixed;
@@ -605,6 +611,11 @@
         .test-button:active {
             transform: scale(0.95);
         }
+        
+        .test-button:disabled {
+            opacity: 0.5;
+            animation: none;
+        }
     </style>
 </head>
 <body>
@@ -627,6 +638,7 @@
 
     <div id="permissionStatus" class="status-box">
         检查通知权限...
+        <div id="swStatus" class="sw-status"></div>
     </div>
     
     <div class="month-nav">
@@ -650,7 +662,7 @@
         <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
     </div>
     
-    <table class="calendar" id="calendar"></table>
+    <table class="calendar" id="calendar"><td>
     
     <div class="reminder-section">
         <div class="section-title">
@@ -766,25 +778,27 @@
 </div>
 
 <div class="test-button-container">
-    <button id="testNotificationBtn" class="test-button">
-        ⚠️ 立即测试通知
+    <button id="testNotificationBtn" class="test-button" disabled>
+        ⚠️ 等待 Service Worker...
     </button>
 </div>
 
-<!-- 创建 service-worker.js 文件 -->
 <script>
 (function() {
-    // 创建 service-worker.js 文件内容
-    const swCode = `
+    // 完整的 Service Worker 代码
+    const SW_SCRIPT = `
         self.addEventListener('install', function(event) {
+            console.log('[SW] 安装中');
             self.skipWaiting();
         });
         
         self.addEventListener('activate', function(event) {
+            console.log('[SW] 激活中');
             event.waitUntil(clients.claim());
         });
         
         self.addEventListener('notificationclick', function(event) {
+            console.log('[SW] 点击通知:', event.notification);
             event.notification.close();
             event.waitUntil(
                 clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
@@ -795,11 +809,11 @@
                 })
             );
         });
+        
+        self.addEventListener('message', function(event) {
+            console.log('[SW] 收到消息:', event.data);
+        });
     `;
-
-    // 创建 Blob URL 作为 Service Worker
-    const blob = new Blob([swCode], { type: 'application/javascript' });
-    const swUrl = URL.createObjectURL(blob);
 
     const App = {
         state: {
@@ -809,7 +823,8 @@
             customReminders: [],
             defaultReminderEnabled: true,
             defaultReminderTime: "09:00",
-            swRegistration: null
+            swRegistration: null,
+            swReady: false
         },
 
         dom: {},
@@ -818,13 +833,12 @@
             this.cacheDOM();
             this.loadData();
             this.registerServiceWorker();
-            this.checkNotificationPermission();
             this.renderCalendar();
             this.updateRemindersList();
             this.updateDefaultToggleUI();
             this.bindEvents();
             
-            setTimeout(() => this.checkAndNotify(), 2000);
+            setTimeout(() => this.checkAndNotify(), 3000);
             setInterval(() => this.checkAndNotify(), 60000);
         },
 
@@ -838,6 +852,7 @@
             this.dom.defaultReminderToggle = document.getElementById('defaultReminderToggle');
             this.dom.defaultReminderContainer = document.getElementById('defaultReminderContainer');
             this.dom.permissionStatus = document.getElementById('permissionStatus');
+            this.dom.swStatus = document.getElementById('swStatus');
             
             this.dom.menuBtn = document.getElementById('menuBtn');
             this.dom.menuDropdown = document.getElementById('menuDropdown');
@@ -876,26 +891,71 @@
         },
 
         registerServiceWorker: function() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swUrl, { scope: '/' })
-                    .then(registration => {
-                        console.log('Service Worker 注册成功');
-                        return navigator.serviceWorker.ready;
-                    })
-                    .then(registration => {
-                        console.log('Service Worker 已就绪');
-                        this.state.swRegistration = registration;
-                        this.checkNotificationPermission();
-                    })
-                    .catch(error => {
-                        console.error('Service Worker 注册失败:', error);
-                    });
+            if (!('serviceWorker' in navigator)) {
+                if (this.dom.swStatus) this.dom.swStatus.innerHTML = '❌ 浏览器不支持 Service Worker';
+                return;
             }
+            
+            // 创建一个 Blob URL 作为 Service Worker
+            const blob = new Blob([SW_SCRIPT], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            
+            console.log('注册 Service Worker:', swUrl);
+            
+            navigator.serviceWorker.register(swUrl)
+                .then(registration => {
+                    console.log('Service Worker 注册成功', registration);
+                    this.state.swRegistration = registration;
+                    
+                    // 等待 Service Worker 激活
+                    if (registration.active) {
+                        this.onSWReady(registration);
+                    } else if (registration.installing) {
+                        registration.installing.addEventListener('statechange', (e) => {
+                            if (e.target.state === 'activated') {
+                                this.onSWReady(registration);
+                            }
+                        });
+                    } else if (registration.waiting) {
+                        registration.waiting.addEventListener('statechange', (e) => {
+                            if (e.target.state === 'activated') {
+                                this.onSWReady(registration);
+                            }
+                        });
+                    }
+                    
+                    return navigator.serviceWorker.ready;
+                })
+                .then(registration => {
+                    console.log('Service Worker 已就绪', registration);
+                    this.onSWReady(registration);
+                })
+                .catch(error => {
+                    console.error('Service Worker 注册失败:', error);
+                    if (this.dom.swStatus) this.dom.swStatus.innerHTML = '❌ Service Worker 注册失败';
+                });
+        },
+        
+        onSWReady: function(registration) {
+            this.state.swRegistration = registration;
+            this.state.swReady = true;
+            
+            if (this.dom.swStatus) {
+                this.dom.swStatus.innerHTML = '✅ Service Worker 已就绪';
+            }
+            
+            if (this.dom.testNotificationBtn) {
+                this.dom.testNotificationBtn.disabled = false;
+                this.dom.testNotificationBtn.innerHTML = '⚠️ 立即测试通知';
+            }
+            
+            // 更新权限显示
+            this.checkNotificationPermission();
         },
 
         loadData: function() {
             try {
-                const saved = localStorage.getItem('lunar_reminders_v13');
+                const saved = localStorage.getItem('lunar_reminders_v14');
                 if (saved) {
                     this.state.customReminders = JSON.parse(saved);
                 }
@@ -907,7 +967,7 @@
         },
 
         saveData: function() {
-            localStorage.setItem('lunar_reminders_v13', JSON.stringify(this.state.customReminders));
+            localStorage.setItem('lunar_reminders_v14', JSON.stringify(this.state.customReminders));
         },
 
         checkNotificationPermission: function() {
@@ -917,15 +977,16 @@
             }
             
             const status = Notification.permission;
+            let swText = this.state.swReady ? '✅ SW就绪' : '⏳ SW加载中...';
             
             if (status === 'granted') {
-                this.dom.permissionStatus.innerHTML = '✅ 通知权限：<span class="status-granted">已开启</span>';
+                this.dom.permissionStatus.innerHTML = `✅ 通知权限：<span class="status-granted">已开启</span><div class="sw-status">${swText}</div>`;
                 if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'none';
             } else if (status === 'denied') {
-                this.dom.permissionStatus.innerHTML = '❌ 通知权限：<span class="status-denied">已拒绝</span> - 请在浏览器设置中允许';
+                this.dom.permissionStatus.innerHTML = `❌ 通知权限：<span class="status-denied">已拒绝</span><div class="sw-status">${swText}</div>`;
                 if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'flex';
             } else {
-                this.dom.permissionStatus.innerHTML = '❓ 通知权限：<span>未设置</span> - 请点击"开启通知"';
+                this.dom.permissionStatus.innerHTML = `❓ 通知权限：<span>未设置</span><div class="sw-status">${swText}</div>`;
                 if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'flex';
             }
         },
@@ -941,17 +1002,18 @@
                 this.checkNotificationPermission();
                 
                 if (permission === 'granted') {
-                    alert('✅ 通知已开启！点击测试按钮验证');
+                    alert('✅ 通知已开启！等待 Service Worker 就绪后点击测试按钮');
                 }
             } catch (e) {
                 console.error('请求失败', e);
             }
         },
 
-        // ✅ 使用 Service Worker 发送通知
+        // 使用 Service Worker 发送通知
         sendNotification: function(title, message) {
-            if (!this.state.swRegistration) {
-                alert('Service Worker 未就绪，请刷新页面');
+            if (!this.state.swReady || !this.state.swRegistration) {
+                console.log('Service Worker 未就绪');
+                alert('Service Worker 还在加载中，请稍后重试');
                 return false;
             }
             
@@ -969,10 +1031,12 @@
                     requireInteraction: true,
                     tag: 'notification-' + Date.now()
                 }).then(() => {
-                    console.log('通知发送成功');
+                    console.log('✅ 通知发送成功');
+                    return true;
                 }).catch(error => {
                     console.error('通知发送失败:', error);
                     alert('通知发送失败: ' + error.message);
+                    return false;
                 });
                 return true;
             } catch (e) {
@@ -983,9 +1047,14 @@
         },
 
         sendTestNotification: function() {
+            if (!this.state.swReady) {
+                alert('Service Worker 还未就绪，请稍后重试\n等待顶部显示"SW就绪"后再测试');
+                return;
+            }
+            
             const now = new Date();
             const timeStr = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
-            this.sendNotification('✅ 测试通知', '现在时间：' + timeStr);
+            this.sendNotification('✅ 农历提醒测试', '现在时间：' + timeStr + '\n\n通知功能正常！');
         },
 
         getLunarDay: function(date) {
@@ -1009,16 +1078,16 @@
             const startWeekday = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             
-            let html = '<tbody><tr>';
+            let html = '<tbody>‹';
             let cellCount = 0;
             
             for (let i = 0; i < startWeekday; i++) {
-                html += '<td class="empty-cell"></td>';
+                html += '<td class="empty-cell">‹';
                 cellCount++;
             }
             
             for (let d = 1; d <= daysInMonth; d++) {
-                if (cellCount % 7 === 0 && cellCount !== 0) html += '</tr><tr>';
+                if (cellCount % 7 === 0 && cellCount !== 0) html += '‹‹';
                 
                 const date = new Date(year, month, d);
                 const isToday = date.toDateString() === this.state.today.toDateString();
@@ -1034,16 +1103,16 @@
                 html += `<div class="solar-date">${d}</div>`;
                 html += `<div class="lunar-date">${lunarDay}</div>`;
                 if (hasReminder) html += '<div class="reminder-badge"></div>';
-                html += '</td>';
+                html += '‹';
                 
                 cellCount++;
             }
             
             while (cellCount % 7 !== 0) {
-                html += '<td class="empty-cell"></td>';
+                html += '<td class="empty-cell">‹';
                 cellCount++;
             }
-            html += '</tr></tbody>';
+            html += '‹</tbody>';
             
             const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             this.dom.currentMonthYear.textContent = `${year}年${monthNames[month]}`;
@@ -1111,7 +1180,7 @@
         },
 
         checkAndNotify: function() {
-            if (Notification.permission !== 'granted' || !this.state.swRegistration) {
+            if (Notification.permission !== 'granted' || !this.state.swReady) {
                 return;
             }
             
@@ -1143,7 +1212,6 @@
                 const [remHour, remMin] = r.time.split(':').map(Number);
                 
                 if (currentHour === remHour && currentMinute === remMin) {
-                    
                     if (r.repeat === 'monthly') {
                         const dayOfMonth = now.getDate();
                         if (parseInt(r.day) === dayOfMonth) {
