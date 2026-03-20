@@ -567,6 +567,16 @@
             font-size: 0.8rem;
             cursor: pointer;
         }
+
+        .notification-guide {
+            background: #e8f0fe;
+            border-radius: 40px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #1a4c8c;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -585,6 +595,10 @@
     <div id="permissionNote" class="permission-note" style="display: none;">
         <span>🔕 通知未开启，收不到提醒</span>
         <button id="enableNotification">开启</button>
+    </div>
+
+    <div id="notificationGuide" class="notification-guide">
+        📱 请在浏览器设置中允许通知，然后刷新页面
     </div>
     
     <div class="month-nav">
@@ -724,16 +738,16 @@
     </div>
 </div>
 
-<!-- 测试按钮 -->
+<!-- 测试按钮 - 简化版 -->
 <div style="position: fixed; bottom: 10px; left: 10px; background: white; padding: 8px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 9999;">
     <button id="testNotificationBtn" style="background: #c43e4c; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px;">🔔 测试通知</button>
 </div>
 
 <script>
 (function() {
-    // 创建一个简单的 Service Worker 文件
-    function createServiceWorker() {
-        const swCode = `
+    // 简单的 Service Worker 代码
+    function createServiceWorkerScript() {
+        return `
             self.addEventListener('install', function(event) {
                 self.skipWaiting();
             });
@@ -754,10 +768,6 @@
                 );
             });
         `;
-        
-        // 将 Service Worker 代码保存到 localStorage 并创建一个 Blob URL
-        const blob = new Blob([swCode], { type: 'application/javascript' });
-        return URL.createObjectURL(blob);
     }
 
     const App = {
@@ -814,6 +824,7 @@
             // 权限提示
             this.dom.permissionNote = document.getElementById('permissionNote');
             this.dom.enableNotification = document.getElementById('enableNotification');
+            this.dom.notificationGuide = document.getElementById('notificationGuide');
             
             // 添加提醒按钮
             this.dom.showAddReminder = document.getElementById('showAddReminder');
@@ -851,14 +862,14 @@
 
         registerServiceWorker: function() {
             if ('serviceWorker' in navigator) {
-                const swUrl = createServiceWorker();
+                // 创建一个简单的 Service Worker 文件
+                const swCode = createServiceWorkerScript();
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
                 
                 navigator.serviceWorker.register(swUrl, { scope: '/' })
                     .then(registration => {
                         console.log('Service Worker 注册成功');
-                        this.state.swRegistration = registration;
-                        
-                        // 等待 Service Worker 激活
                         return navigator.serviceWorker.ready;
                     })
                     .then(registration => {
@@ -873,7 +884,7 @@
 
         loadData: function() {
             try {
-                const saved = localStorage.getItem('lunar_reminders_v10');
+                const saved = localStorage.getItem('lunar_reminders_v11');
                 if (saved) {
                     this.state.customReminders = JSON.parse(saved);
                 }
@@ -888,7 +899,7 @@
         },
 
         saveData: function() {
-            localStorage.setItem('lunar_reminders_v10', JSON.stringify(this.state.customReminders));
+            localStorage.setItem('lunar_reminders_v11', JSON.stringify(this.state.customReminders));
         },
 
         checkNotificationPermission: function() {
@@ -922,84 +933,79 @@
                 this.checkNotificationPermission();
                 
                 if (permission === 'granted') {
-                    alert('通知已开启！');
-                    // 等待 Service Worker 就绪后发送测试通知
-                    setTimeout(() => this.sendTestNotification(), 1000);
+                    alert('✅ 通知已开启！\n\n点击确定后，点击"测试通知"按钮验证');
+                } else {
+                    this.dom.notificationGuide.style.display = 'block';
                 }
             } catch (e) {
                 console.error('请求通知权限失败', e);
-                alert('请求通知权限失败: ' + e.message);
+                this.dom.notificationGuide.style.display = 'block';
             }
         },
 
-        // ✅ 修复：使用 Service Worker 发送通知
+        // ✅ 简化版：使用最简单的通知方式
         sendNotification: function(title, body) {
-            if (!this.state.notificationPermission) {
-                console.log('没有通知权限');
-                return false;
-            }
-
-            // 使用 Service Worker 发送通知
-            if (this.state.swRegistration) {
-                this.state.swRegistration.showNotification(title, {
-                    body: body,
-                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
-                    badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
-                    vibrate: [200, 100, 200],
-                    requireInteraction: true,
-                    tag: 'reminder-' + Date.now(),
-                    renotify: true
-                }).then(() => {
-                    console.log('通知发送成功');
-                    return true;
-                }).catch(error => {
-                    console.error('Service Worker 通知失败:', error);
-                    this.fallbackNotification(title, body);
-                    return false;
-                });
-                return true;
-            } else {
-                // 如果 Service Worker 还没准备好，等待一下再试
-                setTimeout(() => {
-                    if (this.state.swRegistration) {
-                        this.sendNotification(title, body);
-                    } else {
-                        this.fallbackNotification(title, body);
-                    }
-                }, 1000);
-                return true;
-            }
-        },
-
-        // 降级方案：使用传统的 Notification
-        fallbackNotification: function(title, body) {
-            try {
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    // 在 HTTPS 环境下，这个应该能工作
-                    const notification = new Notification(title, { 
+            console.log('尝试发送通知:', title, body);
+            
+            // 方法1：直接使用 Notification API
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    // 在 HTTPS 下应该能工作
+                    const notification = new Notification(title, {
                         body: body,
                         icon: '🔔',
-                        requireInteraction: true 
+                        requireInteraction: true,
+                        vibrate: [200, 100, 200]
                     });
-                    setTimeout(() => notification.close(), 5000);
+                    
+                    notification.onclick = function() {
+                        window.focus();
+                        this.close();
+                    };
+                    
+                    console.log('通知发送成功');
                     return true;
+                } catch (e) {
+                    console.error('直接通知失败:', e);
+                    
+                    // 方法2：尝试使用 Service Worker
+                    if (this.state.swRegistration) {
+                        this.state.swRegistration.showNotification(title, {
+                            body: body,
+                            icon: '🔔',
+                            badge: '🔔',
+                            vibrate: [200, 100, 200],
+                            requireInteraction: true
+                        }).then(() => {
+                            console.log('Service Worker 通知成功');
+                        }).catch(err => {
+                            console.error('Service Worker 通知失败:', err);
+                            alert('通知发送失败。请检查：\n1. 浏览器设置中已允许通知\n2. 刷新页面重试');
+                        });
+                    } else {
+                        alert('通知发送失败。请先开启通知权限，然后刷新页面。');
+                    }
                 }
-            } catch (e) {
-                console.error('降级通知失败:', e);
-                alert('通知发送失败。请在浏览器设置中允许此网站的通知权限。');
+            } else {
+                console.log('没有通知权限');
+                alert('请先开启通知权限，然后刷新页面。');
             }
-            return false;
         },
 
         // 发送测试通知
         sendTestNotification: function() {
-            if (!this.state.notificationPermission) {
-                alert('请先开启通知权限');
+            if (!('Notification' in window)) {
+                alert('您的浏览器不支持通知功能');
+                return;
+            }
+            
+            if (Notification.permission !== 'granted') {
+                alert('请先点击菜单中的"开启通知"按钮');
                 return;
             }
             
             console.log('发送测试通知...');
-            this.sendNotification('✅ 测试通知', '通知功能正常工作！');
+            this.sendNotification('✅ 农历提醒测试', '通知功能正常！现在时间：' + new Date().toLocaleTimeString());
         },
 
         getLunarDay: function(date) {
@@ -1125,10 +1131,7 @@
         },
 
         checkAndNotify: function() {
-            console.log('检查通知...', new Date().toLocaleTimeString());
-            
             if (!this.state.notificationPermission) {
-                console.log('没有通知权限');
                 return;
             }
             
@@ -1136,10 +1139,8 @@
             const todayStr = now.toDateString();
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
-            
-            console.log(`当前时间: ${currentHour}:${currentMinute}`);
 
-            // 检查默认提醒（初一十五）
+            // 检查默认提醒
             if (this.state.defaultReminderEnabled) {
                 const lunarToday = this.getLunarDay(now);
                 if (lunarToday === 1 || lunarToday === 15) {
@@ -1150,7 +1151,6 @@
                         const lastNotified = localStorage.getItem(key);
                         
                         if (!lastNotified) {
-                            console.log('发送默认提醒通知');
                             this.sendNotification('🌙 农历提醒', '今天初一/十五，记得买水果 🍎');
                             localStorage.setItem(key, now.getTime().toString());
                         }
@@ -1173,7 +1173,6 @@
                             const lastNotified = localStorage.getItem(key);
                             
                             if (!lastNotified) {
-                                console.log(`发送自定义提醒: ${r.title}`);
                                 this.sendNotification('📅 自定义提醒', r.title);
                                 localStorage.setItem(key, now.getTime().toString());
                             }
