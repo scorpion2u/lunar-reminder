@@ -551,7 +551,25 @@
             cursor: pointer;
         }
 
-        /* 醒目的测试按钮 */
+        .status-box {
+            background: #f0ebe6;
+            border-radius: 20px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .status-granted {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        
+        .status-denied {
+            color: #c43e4c;
+            font-weight: bold;
+        }
+
         .test-button-container {
             position: fixed;
             bottom: 20px;
@@ -579,38 +597,13 @@
         }
         
         @keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-            100% {
-                transform: scale(1);
-            }
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
         
         .test-button:active {
             transform: scale(0.95);
-        }
-
-        .status-box {
-            background: #f0ebe6;
-            border-radius: 20px;
-            padding: 12px;
-            margin-bottom: 16px;
-            text-align: center;
-            font-size: 14px;
-        }
-        
-        .status-granted {
-            color: #2e7d32;
-            font-weight: bold;
-        }
-        
-        .status-denied {
-            color: #c43e4c;
-            font-weight: bold;
         }
     </style>
 </head>
@@ -729,7 +722,6 @@
             <input type="text" id="reminderTitle" placeholder="例如：买水果" value="买水果">
         </div>
 
-        <!-- 提醒时间输入框 -->
         <div class="form-group">
             <label>提醒时间</label>
             <input type="time" id="reminderTime" value="09:00">
@@ -773,15 +765,42 @@
     </div>
 </div>
 
-<!-- 醒目的测试按钮 -->
 <div class="test-button-container">
     <button id="testNotificationBtn" class="test-button">
-        🔔 立即测试通知
+        ⚠️ 立即测试通知
     </button>
 </div>
 
+<!-- 创建 service-worker.js 文件 -->
 <script>
 (function() {
+    // 创建 service-worker.js 文件内容
+    const swCode = `
+        self.addEventListener('install', function(event) {
+            self.skipWaiting();
+        });
+        
+        self.addEventListener('activate', function(event) {
+            event.waitUntil(clients.claim());
+        });
+        
+        self.addEventListener('notificationclick', function(event) {
+            event.notification.close();
+            event.waitUntil(
+                clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
+                    if (clientList.length > 0) {
+                        return clientList[0].focus();
+                    }
+                    return clients.openWindow('/');
+                })
+            );
+        });
+    `;
+
+    // 创建 Blob URL 作为 Service Worker
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+
     const App = {
         state: {
             currentYear: new Date().getFullYear(),
@@ -790,7 +809,7 @@
             customReminders: [],
             defaultReminderEnabled: true,
             defaultReminderTime: "09:00",
-            notificationPermission: false
+            swRegistration: null
         },
 
         dom: {},
@@ -798,21 +817,18 @@
         init: function() {
             this.cacheDOM();
             this.loadData();
+            this.registerServiceWorker();
             this.checkNotificationPermission();
             this.renderCalendar();
             this.updateRemindersList();
             this.updateDefaultToggleUI();
             this.bindEvents();
             
-            // 立即检查一次通知
             setTimeout(() => this.checkAndNotify(), 2000);
-            
-            // 每分钟检查一次通知
             setInterval(() => this.checkAndNotify(), 60000);
         },
 
         cacheDOM: function() {
-            // 基础元素
             this.dom.calendar = document.getElementById('calendar');
             this.dom.currentMonthYear = document.getElementById('currentMonthYear');
             this.dom.prevMonth = document.getElementById('prevMonth');
@@ -823,33 +839,26 @@
             this.dom.defaultReminderContainer = document.getElementById('defaultReminderContainer');
             this.dom.permissionStatus = document.getElementById('permissionStatus');
             
-            // 菜单相关
             this.dom.menuBtn = document.getElementById('menuBtn');
             this.dom.menuDropdown = document.getElementById('menuDropdown');
             this.dom.addCustomReminder = document.getElementById('addCustomReminder');
             this.dom.manageReminders = document.getElementById('manageReminders');
             this.dom.requestPermission = document.getElementById('requestPermission');
             
-            // 权限提示
             this.dom.permissionNote = document.getElementById('permissionNote');
             this.dom.enableNotification = document.getElementById('enableNotification');
-            
-            // 添加提醒按钮
             this.dom.showAddReminder = document.getElementById('showAddReminder');
             
-            // 添加提醒模态框
             this.dom.addReminderModal = document.getElementById('addReminderModal');
             this.dom.closeAddModal = document.getElementById('closeAddModal');
             this.dom.cancelAdd = document.getElementById('cancelAdd');
             this.dom.saveReminder = document.getElementById('saveReminder');
             
-            // 管理提醒模态框
             this.dom.manageRemindersModal = document.getElementById('manageRemindersModal');
             this.dom.closeManageModal = document.getElementById('closeManageModal');
             this.dom.closeManage = document.getElementById('closeManage');
             this.dom.customRemindersList = document.getElementById('customRemindersList');
             
-            // 表单元素
             this.dom.reminderTitle = document.getElementById('reminderTitle');
             this.dom.reminderDay = document.getElementById('reminderDay');
             this.dom.lunarMonth = document.getElementById('lunarMonth');
@@ -859,25 +868,38 @@
             this.dom.repeatType = document.getElementById('repeatType');
             this.dom.reminderTime = document.getElementById('reminderTime');
             
-            // 单选按钮组
             this.dom.reminderTypeRadios = document.querySelectorAll('input[name="reminderType"]');
             this.dom.lunarMonthGroup = document.getElementById('lunarMonthGroup');
             this.dom.solarGroup = document.getElementById('solarGroup');
             
-            // 测试按钮
             this.dom.testNotificationBtn = document.getElementById('testNotificationBtn');
+        },
+
+        registerServiceWorker: function() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(swUrl, { scope: '/' })
+                    .then(registration => {
+                        console.log('Service Worker 注册成功');
+                        return navigator.serviceWorker.ready;
+                    })
+                    .then(registration => {
+                        console.log('Service Worker 已就绪');
+                        this.state.swRegistration = registration;
+                        this.checkNotificationPermission();
+                    })
+                    .catch(error => {
+                        console.error('Service Worker 注册失败:', error);
+                    });
+            }
         },
 
         loadData: function() {
             try {
-                const saved = localStorage.getItem('lunar_reminders_v12');
+                const saved = localStorage.getItem('lunar_reminders_v13');
                 if (saved) {
                     this.state.customReminders = JSON.parse(saved);
                 }
-            } catch (e) {
-                console.error('加载数据失败', e);
-            }
-            // 确保每个提醒都有必要的字段
+            } catch (e) {}
             this.state.customReminders = this.state.customReminders.map(r => ({
                 ...r,
                 time: r.time || "09:00"
@@ -885,37 +907,32 @@
         },
 
         saveData: function() {
-            localStorage.setItem('lunar_reminders_v12', JSON.stringify(this.state.customReminders));
+            localStorage.setItem('lunar_reminders_v13', JSON.stringify(this.state.customReminders));
         },
 
-        // 检查通知权限并更新UI
         checkNotificationPermission: function() {
             if (!("Notification" in window)) {
-                this.dom.permissionStatus.innerHTML = '❌ 您的浏览器不支持通知功能';
+                this.dom.permissionStatus.innerHTML = '❌ 浏览器不支持通知';
                 return;
             }
             
-            this.state.notificationPermission = Notification.permission === 'granted';
+            const status = Notification.permission;
             
-            // 更新状态显示
-            if (Notification.permission === 'granted') {
+            if (status === 'granted') {
                 this.dom.permissionStatus.innerHTML = '✅ 通知权限：<span class="status-granted">已开启</span>';
                 if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'none';
-            } else if (Notification.permission === 'denied') {
-                this.dom.permissionStatus.innerHTML = '❌ 通知权限：<span class="status-denied">已拒绝</span> - 请在浏览器设置中允许通知';
+            } else if (status === 'denied') {
+                this.dom.permissionStatus.innerHTML = '❌ 通知权限：<span class="status-denied">已拒绝</span> - 请在浏览器设置中允许';
                 if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'flex';
             } else {
-                this.dom.permissionStatus.innerHTML = '❓ 通知权限：<span class="status-denied">未设置</span> - 请点击"开启通知"';
+                this.dom.permissionStatus.innerHTML = '❓ 通知权限：<span>未设置</span> - 请点击"开启通知"';
                 if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'flex';
             }
-            
-            console.log('通知权限:', Notification.permission);
         },
 
-        // 请求通知权限
         requestNotificationPermission: async function() {
             if (!("Notification" in window)) { 
-                alert('您的浏览器不支持通知功能'); 
+                alert('浏览器不支持通知'); 
                 return; 
             }
             
@@ -924,20 +941,17 @@
                 this.checkNotificationPermission();
                 
                 if (permission === 'granted') {
-                    alert('✅ 通知已开启！现在点击"立即测试通知"按钮验证');
-                } else {
-                    alert('❌ 通知被拒绝。请在浏览器设置中手动允许通知');
+                    alert('✅ 通知已开启！点击测试按钮验证');
                 }
             } catch (e) {
-                console.error('请求通知权限失败', e);
-                alert('请求通知权限失败');
+                console.error('请求失败', e);
             }
         },
 
-        // 最简单的通知发送函数
+        // ✅ 使用 Service Worker 发送通知
         sendNotification: function(title, message) {
-            if (!("Notification" in window)) {
-                alert('您的浏览器不支持通知');
+            if (!this.state.swRegistration) {
+                alert('Service Worker 未就绪，请刷新页面');
                 return false;
             }
             
@@ -947,33 +961,31 @@
             }
             
             try {
-                // 最简单的通知，不加任何花哨的功能
-                const notification = new Notification(title, {
+                this.state.swRegistration.showNotification(title, {
                     body: message,
+                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
+                    badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
+                    vibrate: [200, 100, 200],
                     requireInteraction: true,
-                    silent: false
+                    tag: 'notification-' + Date.now()
+                }).then(() => {
+                    console.log('通知发送成功');
+                }).catch(error => {
+                    console.error('通知发送失败:', error);
+                    alert('通知发送失败: ' + error.message);
                 });
-                
-                // 点击通知聚焦窗口
-                notification.onclick = function() {
-                    window.focus();
-                    this.close();
-                };
-                
-                console.log('通知发送成功:', title, message);
                 return true;
             } catch (e) {
-                console.error('通知发送失败:', e);
-                alert('通知发送失败: ' + e.message);
+                console.error('通知错误:', e);
+                alert('通知错误: ' + e.message);
                 return false;
             }
         },
 
-        // 测试通知 - 立刻发送
         sendTestNotification: function() {
             const now = new Date();
             const timeStr = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
-            this.sendNotification('✅ 测试通知', '现在时间：' + timeStr + '\n如果看到这条通知，说明功能正常！');
+            this.sendNotification('✅ 测试通知', '现在时间：' + timeStr);
         },
 
         getLunarDay: function(date) {
@@ -1099,7 +1111,7 @@
         },
 
         checkAndNotify: function() {
-            if (Notification.permission !== 'granted') {
+            if (Notification.permission !== 'granted' || !this.state.swRegistration) {
                 return;
             }
             
@@ -1108,7 +1120,6 @@
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
 
-            // 检查默认提醒
             if (this.state.defaultReminderEnabled) {
                 const lunarToday = this.getLunarDay(now);
                 if (lunarToday === 1 || lunarToday === 15) {
@@ -1126,7 +1137,6 @@
                 }
             }
 
-            // 检查自定义提醒
             this.state.customReminders.forEach(r => {
                 if (!r.time) return;
                 
@@ -1258,7 +1268,6 @@
         },
 
         bindEvents: function() {
-            // 月份导航
             if (this.dom.prevMonth) {
                 this.dom.prevMonth.addEventListener('click', () => {
                     this.state.currentMonth--;
@@ -1283,7 +1292,6 @@
                 });
             }
 
-            // 菜单按钮
             if (this.dom.menuBtn && this.dom.menuDropdown) {
                 this.dom.menuBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1299,12 +1307,10 @@
                 });
             }
 
-            // 默认提醒开关
             if (this.dom.defaultReminderContainer) {
                 this.dom.defaultReminderContainer.addEventListener('click', () => this.toggleDefaultReminder());
             }
 
-            // 菜单项
             if (this.dom.addCustomReminder) {
                 this.dom.addCustomReminder.addEventListener('click', () => {
                     if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
@@ -1326,12 +1332,10 @@
                 });
             }
 
-            // 底部添加按钮
             if (this.dom.showAddReminder) {
                 this.dom.showAddReminder.addEventListener('click', () => this.openAddModal());
             }
 
-            // 关闭模态框按钮
             if (this.dom.closeAddModal) {
                 this.dom.closeAddModal.addEventListener('click', () => this.closeModal('add'));
             }
@@ -1348,12 +1352,10 @@
                 this.dom.closeManage.addEventListener('click', () => this.closeModal('manage'));
             }
 
-            // 保存提醒
             if (this.dom.saveReminder) {
                 this.dom.saveReminder.addEventListener('click', () => this.saveCustomReminder());
             }
 
-            // 类型切换
             if (this.dom.reminderTypeRadios) {
                 this.dom.reminderTypeRadios.forEach(radio => {
                     radio.addEventListener('change', (e) => {
@@ -1368,12 +1370,10 @@
                 });
             }
 
-            // 权限开启按钮
             if (this.dom.enableNotification) {
                 this.dom.enableNotification.addEventListener('click', () => this.requestNotificationPermission());
             }
 
-            // 测试按钮 - 巨大的红色按钮
             if (this.dom.testNotificationBtn) {
                 this.dom.testNotificationBtn.addEventListener('click', () => {
                     this.sendTestNotification();
