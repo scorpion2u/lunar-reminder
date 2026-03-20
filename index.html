@@ -7,6 +7,7 @@
     <!-- 添加 manifest 支持 -->
     <link rel="manifest" href="manifest.json">
     <style>
+        /* 样式保持不变，和之前一样 */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -569,7 +570,6 @@
     </style>
 </head>
 <body>
-<!-- ===== 时间输入框已从body顶部移除，现在正确放置在弹窗内 ===== -->
 <div class="container">
     <div class="header">
         <h1>🌙 农历提醒</h1>
@@ -626,7 +626,7 @@
     </div>
 </div>
 
-<!-- 添加自定义提醒模态框 (时间选择器已正确移入) -->
+<!-- 添加自定义提醒模态框 -->
 <div id="addReminderModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -680,7 +680,7 @@
             <input type="text" id="reminderTitle" placeholder="例如：买水果" value="买水果">
         </div>
 
-        <!-- ========= 提醒时间 (正确位置) ========= -->
+        <!-- 提醒时间输入框 - 正确位置 -->
         <div class="form-group">
             <label>提醒时间</label>
             <input type="time" id="reminderTime" value="09:00">
@@ -734,14 +734,13 @@
     }
 
     const App = {
-        // 状态管理：添加 defaultReminderTime
         state: {
             currentYear: new Date().getFullYear(),
             currentMonth: new Date().getMonth(),
             today: new Date(),
-            customReminders: [],          // 每个提醒包含 id, title, time, daysBefore, type, month, day, isLeap, solarDate, repeat
+            customReminders: [],
             defaultReminderEnabled: true,
-            defaultReminderTime: "09:00", // ✅ 默认提醒时间（初一十五）
+            defaultReminderTime: "09:00",
             notificationPermission: false
         },
 
@@ -755,37 +754,73 @@
             this.updateRemindersList();
             this.updateDefaultToggleUI();
             this.bindEvents();
-            // 每分钟检查一次通知（按时间触发）
+            // 每分钟检查一次通知
             setInterval(() => this.checkAndNotify(), 60000);
-            // 立即检查一次
             setTimeout(() => this.checkAndNotify(), 1000);
         },
 
         cacheDOM: function() {
-            const ids = ['calendar','currentMonthYear','prevMonth','nextMonth',
-                'reminderList','reminderCount','defaultReminderToggle','defaultReminderContainer',
-                'menuBtn','menuDropdown','addCustomReminder','manageReminders','requestPermission',
-                'permissionNote','enableNotification','showAddReminder',
-                'addReminderModal','closeAddModal','cancelAdd','saveReminder',
-                'manageRemindersModal','closeManageModal','closeManage','customRemindersList',
-                'reminderTitle','reminderDay','lunarMonth','isLeap','solarDate','daysBefore','repeatType',
-                'reminderTime']; // ✅ 缓存时间输入框
+            // 基础元素
+            this.dom.calendar = document.getElementById('calendar');
+            this.dom.currentMonthYear = document.getElementById('currentMonthYear');
+            this.dom.prevMonth = document.getElementById('prevMonth');
+            this.dom.nextMonth = document.getElementById('nextMonth');
+            this.dom.reminderList = document.getElementById('reminderList');
+            this.dom.reminderCount = document.getElementById('reminderCount');
+            this.dom.defaultReminderToggle = document.getElementById('defaultReminderToggle');
+            this.dom.defaultReminderContainer = document.getElementById('defaultReminderContainer');
             
-            ids.forEach(id => this.dom[id] = document.getElementById(id));
+            // 菜单相关
+            this.dom.menuBtn = document.getElementById('menuBtn');
+            this.dom.menuDropdown = document.getElementById('menuDropdown');
+            this.dom.addCustomReminder = document.getElementById('addCustomReminder');
+            this.dom.manageReminders = document.getElementById('manageReminders');
+            this.dom.requestPermission = document.getElementById('requestPermission');
             
+            // 权限提示
+            this.dom.permissionNote = document.getElementById('permissionNote');
+            this.dom.enableNotification = document.getElementById('enableNotification');
+            
+            // 添加提醒按钮
+            this.dom.showAddReminder = document.getElementById('showAddReminder');
+            
+            // 添加提醒模态框
+            this.dom.addReminderModal = document.getElementById('addReminderModal');
+            this.dom.closeAddModal = document.getElementById('closeAddModal');
+            this.dom.cancelAdd = document.getElementById('cancelAdd');
+            this.dom.saveReminder = document.getElementById('saveReminder');
+            
+            // 管理提醒模态框
+            this.dom.manageRemindersModal = document.getElementById('manageRemindersModal');
+            this.dom.closeManageModal = document.getElementById('closeManageModal');
+            this.dom.closeManage = document.getElementById('closeManage');
+            this.dom.customRemindersList = document.getElementById('customRemindersList');
+            
+            // 表单元素
+            this.dom.reminderTitle = document.getElementById('reminderTitle');
+            this.dom.reminderDay = document.getElementById('reminderDay');
+            this.dom.lunarMonth = document.getElementById('lunarMonth');
+            this.dom.isLeap = document.getElementById('isLeap');
+            this.dom.solarDate = document.getElementById('solarDate');
+            this.dom.daysBefore = document.getElementById('daysBefore');
+            this.dom.repeatType = document.getElementById('repeatType');
+            this.dom.reminderTime = document.getElementById('reminderTime'); // 重要！
+            
+            // 单选按钮组
             this.dom.reminderTypeRadios = document.querySelectorAll('input[name="reminderType"]');
+            this.dom.lunarMonthGroup = document.getElementById('lunarMonthGroup');
+            this.dom.solarGroup = document.getElementById('solarGroup');
         },
 
         loadData: function() {
             try {
-                const saved = localStorage.getItem('lunar_reminders_v7'); // 版本更新
+                const saved = localStorage.getItem('lunar_reminders_v7');
                 if (saved) {
                     this.state.customReminders = JSON.parse(saved);
-                } else {
-                    const old = localStorage.getItem('lunar_reminders_v6');
-                    if (old) this.state.customReminders = JSON.parse(old);
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error('加载数据失败', e);
+            }
             // 确保每个提醒都有 time 字段
             this.state.customReminders = this.state.customReminders.map(r => ({
                 ...r,
@@ -801,22 +836,28 @@
             if (!("Notification" in window)) return;
             this.state.notificationPermission = Notification.permission === 'granted';
             if (Notification.permission === 'default' || Notification.permission === 'denied') {
-                this.dom.permissionNote.style.display = 'flex';
+                if (this.dom.permissionNote) {
+                    this.dom.permissionNote.style.display = 'flex';
+                }
             } else {
-                this.dom.permissionNote.style.display = 'none';
+                if (this.dom.permissionNote) {
+                    this.dom.permissionNote.style.display = 'none';
+                }
             }
         },
 
         requestNotificationPermission: async function() {
-            if (!("Notification" in window)) { alert('浏览器不支持通知'); return; }
+            if (!("Notification" in window)) { 
+                alert('浏览器不支持通知'); 
+                return; 
+            }
             const permission = await Notification.requestPermission();
             this.state.notificationPermission = permission === 'granted';
             this.checkNotificationPermission();
         },
 
-        // 模拟农历日（演示用：直接用公历日模拟农历日，保证初一十五可测）
         getLunarDay: function(date) {
-            return date.getDate(); // 简单映射，1 = 初一，15 = 十五
+            return date.getDate();
         },
 
         updateDefaultToggleUI: function() {
@@ -875,7 +916,6 @@
             this.dom.calendar.innerHTML = html;
         },
 
-        // 更新即将提醒列表（仅用于展示，实际通知由checkAndNotify按时间触发）
         updateRemindersList: function() {
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -936,7 +976,6 @@
             countEl.textContent = `近${reminders.length}个提醒`;
         },
 
-        // ✅ 核心：按具体时间触发通知
         checkAndNotify: function() {
             if (!this.state.notificationPermission) return;
             
@@ -945,7 +984,7 @@
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
 
-            // 1. 检查默认提醒（初一十五）
+            // 检查默认提醒
             if (this.state.defaultReminderEnabled) {
                 const lunarToday = this.getLunarDay(now);
                 if (lunarToday === 1 || lunarToday === 15) {
@@ -960,12 +999,11 @@
                 }
             }
 
-            // 2. 检查自定义提醒（按时间匹配）
+            // 检查自定义提醒
             this.state.customReminders.forEach(r => {
                 if (!r.time) return;
                 const [remHour, remMin] = r.time.split(':').map(Number);
                 if (currentHour === remHour && currentMinute === remMin) {
-                    // 简单判断每月提醒且日相同（实际可扩展）
                     if (r.repeat === 'monthly') {
                         const dayOfMonth = now.getDate();
                         if (parseInt(r.day) === dayOfMonth) {
@@ -988,24 +1026,33 @@
         },
 
         openAddModal: function() {
-            // 重置表单
+            // 确保所有元素存在
             if (this.dom.reminderTitle) this.dom.reminderTitle.value = '买水果';
             if (this.dom.reminderDay) this.dom.reminderDay.value = '15';
             if (this.dom.daysBefore) this.dom.daysBefore.value = '3';
-            if (this.dom.reminderTime) this.dom.reminderTime.value = '09:00'; // 默认时间
-            document.querySelector('input[name="reminderType"][value="lunar"]').checked = true;
-            this.dom.solarGroup.style.display = 'none';
-            this.dom.lunarMonthGroup.style.display = 'block';
-            this.dom.addReminderModal.style.display = 'flex';
+            if (this.dom.reminderTime) this.dom.reminderTime.value = '09:00';
+            
+            // 重置单选按钮
+            document.querySelectorAll('input[name="reminderType"]').forEach(radio => {
+                if (radio.value === 'lunar') radio.checked = true;
+            });
+            
+            if (this.dom.solarGroup) this.dom.solarGroup.style.display = 'none';
+            if (this.dom.lunarMonthGroup) this.dom.lunarMonthGroup.style.display = 'block';
+            
+            // 显示模态框
+            if (this.dom.addReminderModal) {
+                this.dom.addReminderModal.style.display = 'flex';
+            }
         },
 
-        // ✅ 保存自定义提醒 (包含时间字段)
         saveCustomReminder: function() {
-            const type = document.querySelector('input[name="reminderType"]:checked').value;
-            const title = this.dom.reminderTitle.value.trim() || '提醒';
-            const time = this.dom.reminderTime.value || "09:00";            // ✅ 关键：获取时间
-            const daysBefore = parseInt(this.dom.daysBefore.value) || 0;
-            const repeat = this.dom.repeatType.value;
+            // 获取表单值
+            const type = document.querySelector('input[name="reminderType"]:checked')?.value || 'lunar';
+            const title = this.dom.reminderTitle?.value.trim() || '提醒';
+            const time = this.dom.reminderTime?.value || "09:00";
+            const daysBefore = parseInt(this.dom.daysBefore?.value) || 0;
+            const repeat = this.dom.repeatType?.value || 'monthly';
             
             let reminder = {
                 id: Date.now(),
@@ -1013,16 +1060,19 @@
                 title,
                 daysBefore,
                 repeat,
-                time,                     // ✅ 保存时间
+                time,
             };
 
             if (type === 'lunar') {
-                reminder.month = this.dom.lunarMonth.value;
-                reminder.day = this.dom.reminderDay.value;
-                reminder.isLeap = this.dom.isLeap.checked;
+                reminder.month = this.dom.lunarMonth?.value || '1';
+                reminder.day = this.dom.reminderDay?.value || '15';
+                reminder.isLeap = this.dom.isLeap?.checked || false;
             } else {
-                const solarDate = this.dom.solarDate.value;
-                if (!solarDate) { alert('请选择公历日期'); return; }
+                const solarDate = this.dom.solarDate?.value;
+                if (!solarDate) { 
+                    alert('请选择公历日期'); 
+                    return; 
+                }
                 reminder.solarDate = solarDate;
             }
 
@@ -1030,15 +1080,24 @@
             this.saveData();
             this.closeModal('add');
             this.updateRemindersList();
+            
+            // 显示成功提示（可选）
+            alert('提醒添加成功！');
         },
 
         closeModal: function(modal) {
-            if (modal === 'add') this.dom.addReminderModal.style.display = 'none';
-            if (modal === 'manage') this.dom.manageRemindersModal.style.display = 'none';
+            if (modal === 'add' && this.dom.addReminderModal) {
+                this.dom.addReminderModal.style.display = 'none';
+            }
+            if (modal === 'manage' && this.dom.manageRemindersModal) {
+                this.dom.manageRemindersModal.style.display = 'none';
+            }
         },
 
         showManage: function() {
             const listDiv = this.dom.customRemindersList;
+            if (!listDiv) return;
+            
             if (this.state.customReminders.length === 0) {
                 listDiv.innerHTML = '<div class="empty-reminder">暂无自定义提醒</div>';
             } else {
@@ -1054,91 +1113,148 @@
                 });
                 listDiv.innerHTML = html;
 
+                // 绑定删除事件
                 listDiv.querySelectorAll('.custom-delete').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const id = Number(btn.dataset.id);
                         this.state.customReminders = this.state.customReminders.filter(r => r.id !== id);
                         this.saveData();
-                        this.showManage();
+                        this.showManage(); // 刷新列表
                         this.updateRemindersList();
                     });
                 });
             }
-            this.dom.manageRemindersModal.style.display = 'flex';
+            
+            if (this.dom.manageRemindersModal) {
+                this.dom.manageRemindersModal.style.display = 'flex';
+            }
         },
 
         bindEvents: function() {
-            this.dom.prevMonth.addEventListener('click', () => {
-                this.state.currentMonth--;
-                if (this.state.currentMonth < 0) {
-                    this.state.currentMonth = 11;
-                    this.state.currentYear--;
-                }
-                this.renderCalendar();
-                this.updateRemindersList();
-            });
-            this.dom.nextMonth.addEventListener('click', () => {
-                this.state.currentMonth++;
-                if (this.state.currentMonth > 11) {
-                    this.state.currentMonth = 0;
-                    this.state.currentYear++;
-                }
-                this.renderCalendar();
-                this.updateRemindersList();
-            });
+            // 月份导航
+            if (this.dom.prevMonth) {
+                this.dom.prevMonth.addEventListener('click', () => {
+                    this.state.currentMonth--;
+                    if (this.state.currentMonth < 0) {
+                        this.state.currentMonth = 11;
+                        this.state.currentYear--;
+                    }
+                    this.renderCalendar();
+                    this.updateRemindersList();
+                });
+            }
+            
+            if (this.dom.nextMonth) {
+                this.dom.nextMonth.addEventListener('click', () => {
+                    this.state.currentMonth++;
+                    if (this.state.currentMonth > 11) {
+                        this.state.currentMonth = 0;
+                        this.state.currentYear++;
+                    }
+                    this.renderCalendar();
+                    this.updateRemindersList();
+                });
+            }
 
-            this.dom.menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.dom.menuDropdown.classList.toggle('show');
-            });
-            document.addEventListener('click', (e) => {
-                if (!this.dom.menuBtn.contains(e.target) && !this.dom.menuDropdown.contains(e.target)) {
-                    this.dom.menuDropdown.classList.remove('show');
-                }
-            });
-
-            this.dom.defaultReminderContainer.addEventListener('click', () => this.toggleDefaultReminder());
-
-            this.dom.addCustomReminder.addEventListener('click', () => {
-                this.dom.menuDropdown.classList.remove('show');
-                this.openAddModal();
-            });
-            this.dom.manageReminders.addEventListener('click', () => {
-                this.dom.menuDropdown.classList.remove('show');
-                this.showManage();
-            });
-            this.dom.requestPermission.addEventListener('click', () => {
-                this.dom.menuDropdown.classList.remove('show');
-                this.requestNotificationPermission();
-            });
-
-            this.dom.showAddReminder.addEventListener('click', () => this.openAddModal());
-
-            this.dom.closeAddModal.addEventListener('click', () => this.closeModal('add'));
-            this.dom.cancelAdd.addEventListener('click', () => this.closeModal('add'));
-            this.dom.closeManageModal.addEventListener('click', () => this.closeModal('manage'));
-            this.dom.closeManage.addEventListener('click', () => this.closeModal('manage'));
-
-            this.dom.saveReminder.addEventListener('click', () => this.saveCustomReminder());
-
-            this.dom.reminderTypeRadios.forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    if (e.target.value === 'lunar') {
-                        this.dom.solarGroup.style.display = 'none';
-                        this.dom.lunarMonthGroup.style.display = 'block';
-                    } else {
-                        this.dom.solarGroup.style.display = 'block';
-                        this.dom.lunarMonthGroup.style.display = 'none';
+            // 菜单按钮
+            if (this.dom.menuBtn && this.dom.menuDropdown) {
+                this.dom.menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.dom.menuDropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (this.dom.menuBtn && this.dom.menuDropdown) {
+                        if (!this.dom.menuBtn.contains(e.target) && !this.dom.menuDropdown.contains(e.target)) {
+                            this.dom.menuDropdown.classList.remove('show');
+                        }
                     }
                 });
-            });
+            }
 
-            this.dom.enableNotification.addEventListener('click', () => this.requestNotificationPermission());
+            // 默认提醒开关
+            if (this.dom.defaultReminderContainer) {
+                this.dom.defaultReminderContainer.addEventListener('click', () => this.toggleDefaultReminder());
+            }
+
+            // 菜单项
+            if (this.dom.addCustomReminder) {
+                this.dom.addCustomReminder.addEventListener('click', () => {
+                    if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
+                    this.openAddModal();
+                });
+            }
+            
+            if (this.dom.manageReminders) {
+                this.dom.manageReminders.addEventListener('click', () => {
+                    if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
+                    this.showManage();
+                });
+            }
+            
+            if (this.dom.requestPermission) {
+                this.dom.requestPermission.addEventListener('click', () => {
+                    if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
+                    this.requestNotificationPermission();
+                });
+            }
+
+            // 底部添加按钮
+            if (this.dom.showAddReminder) {
+                this.dom.showAddReminder.addEventListener('click', () => this.openAddModal());
+            }
+
+            // 关闭模态框按钮
+            if (this.dom.closeAddModal) {
+                this.dom.closeAddModal.addEventListener('click', () => this.closeModal('add'));
+            }
+            
+            if (this.dom.cancelAdd) {
+                this.dom.cancelAdd.addEventListener('click', () => this.closeModal('add'));
+            }
+            
+            if (this.dom.closeManageModal) {
+                this.dom.closeManageModal.addEventListener('click', () => this.closeModal('manage'));
+            }
+            
+            if (this.dom.closeManage) {
+                this.dom.closeManage.addEventListener('click', () => this.closeModal('manage'));
+            }
+
+            // 保存提醒
+            if (this.dom.saveReminder) {
+                this.dom.saveReminder.addEventListener('click', () => this.saveCustomReminder());
+            }
+
+            // 类型切换
+            if (this.dom.reminderTypeRadios) {
+                this.dom.reminderTypeRadios.forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        if (e.target.value === 'lunar') {
+                            if (this.dom.solarGroup) this.dom.solarGroup.style.display = 'none';
+                            if (this.dom.lunarMonthGroup) this.dom.lunarMonthGroup.style.display = 'block';
+                        } else {
+                            if (this.dom.solarGroup) this.dom.solarGroup.style.display = 'block';
+                            if (this.dom.lunarMonthGroup) this.dom.lunarMonthGroup.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // 权限开启按钮
+            if (this.dom.enableNotification) {
+                this.dom.enableNotification.addEventListener('click', () => this.requestNotificationPermission());
+            }
         }
     };
 
-    App.init();
+    // 确保DOM加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    } else {
+        App.init();
+    }
 })();
 </script>
 </body>
