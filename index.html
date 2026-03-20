@@ -7,7 +7,7 @@
     <!-- 添加 manifest 支持 -->
     <link rel="manifest" href="manifest.json">
     <style>
-        /* 样式保持不变 */
+        /* 样式保持不变，和之前一样 */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -731,46 +731,33 @@
 
 <script>
 (function() {
-    // 创建 Service Worker 脚本
-    const swScript = `
-        self.addEventListener('notificationclick', function(event) {
-            event.notification.close();
-            event.waitUntil(
-                clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-                    if (clientList.length > 0) {
-                        return clientList[0].focus();
-                    }
-                    return clients.openWindow('/');
-                })
-            );
-        });
-
-        self.addEventListener('push', function(event) {
-            const options = {
-                body: event.data ? event.data.text() : '新提醒',
-                icon: '🔔',
-                badge: '🔔',
-                vibrate: [200, 100, 200]
-            };
-            event.waitUntil(
-                self.registration.showNotification('农历提醒', options)
-            );
-        });
-    `;
-
-    // 注册 Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            // 创建一个简单的 Service Worker
-            const blob = new Blob([swScript], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(blob);
-            
-            navigator.serviceWorker.register(swUrl).then(registration => {
-                console.log('ServiceWorker 注册成功');
-            }).catch(err => {
-                console.log('ServiceWorker 注册失败:', err);
+    // 创建一个简单的 Service Worker 文件
+    function createServiceWorker() {
+        const swCode = `
+            self.addEventListener('install', function(event) {
+                self.skipWaiting();
             });
-        });
+            
+            self.addEventListener('activate', function(event) {
+                event.waitUntil(clients.claim());
+            });
+            
+            self.addEventListener('notificationclick', function(event) {
+                event.notification.close();
+                event.waitUntil(
+                    clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
+                        if (clientList.length > 0) {
+                            return clientList[0].focus();
+                        }
+                        return clients.openWindow('/');
+                    })
+                );
+            });
+        `;
+        
+        // 将 Service Worker 代码保存到 localStorage 并创建一个 Blob URL
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        return URL.createObjectURL(blob);
     }
 
     const App = {
@@ -864,16 +851,29 @@
 
         registerServiceWorker: function() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.ready.then(registration => {
-                    this.state.swRegistration = registration;
-                    console.log('Service Worker 已就绪');
-                });
+                const swUrl = createServiceWorker();
+                
+                navigator.serviceWorker.register(swUrl, { scope: '/' })
+                    .then(registration => {
+                        console.log('Service Worker 注册成功');
+                        this.state.swRegistration = registration;
+                        
+                        // 等待 Service Worker 激活
+                        return navigator.serviceWorker.ready;
+                    })
+                    .then(registration => {
+                        console.log('Service Worker 已就绪');
+                        this.state.swRegistration = registration;
+                    })
+                    .catch(error => {
+                        console.error('Service Worker 注册失败:', error);
+                    });
             }
         },
 
         loadData: function() {
             try {
-                const saved = localStorage.getItem('lunar_reminders_v9');
+                const saved = localStorage.getItem('lunar_reminders_v10');
                 if (saved) {
                     this.state.customReminders = JSON.parse(saved);
                 }
@@ -888,7 +888,7 @@
         },
 
         saveData: function() {
-            localStorage.setItem('lunar_reminders_v9', JSON.stringify(this.state.customReminders));
+            localStorage.setItem('lunar_reminders_v10', JSON.stringify(this.state.customReminders));
         },
 
         checkNotificationPermission: function() {
@@ -923,8 +923,8 @@
                 
                 if (permission === 'granted') {
                     alert('通知已开启！');
-                    // 发送一个测试通知
-                    setTimeout(() => this.sendTestNotification(), 500);
+                    // 等待 Service Worker 就绪后发送测试通知
+                    setTimeout(() => this.sendTestNotification(), 1000);
                 }
             } catch (e) {
                 console.error('请求通知权限失败', e);
@@ -932,45 +932,61 @@
             }
         },
 
-        // ✅ 修复：使用 ServiceWorker 发送通知
+        // ✅ 修复：使用 Service Worker 发送通知
         sendNotification: function(title, body) {
             if (!this.state.notificationPermission) {
                 console.log('没有通知权限');
                 return false;
             }
 
-            // 尝试使用 ServiceWorker 发送通知
+            // 使用 Service Worker 发送通知
             if (this.state.swRegistration) {
                 this.state.swRegistration.showNotification(title, {
                     body: body,
-                    icon: '🔔',
-                    badge: '🔔',
+                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
+                    badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
                     vibrate: [200, 100, 200],
                     requireInteraction: true,
-                    tag: 'lunar-reminder-' + Date.now()
-                }).catch(e => {
-                    console.error('ServiceWorker 通知失败', e);
-                    // 降级方案：尝试直接使用 Notification
+                    tag: 'reminder-' + Date.now(),
+                    renotify: true
+                }).then(() => {
+                    console.log('通知发送成功');
+                    return true;
+                }).catch(error => {
+                    console.error('Service Worker 通知失败:', error);
                     this.fallbackNotification(title, body);
+                    return false;
                 });
                 return true;
             } else {
-                // 降级方案
-                return this.fallbackNotification(title, body);
+                // 如果 Service Worker 还没准备好，等待一下再试
+                setTimeout(() => {
+                    if (this.state.swRegistration) {
+                        this.sendNotification(title, body);
+                    } else {
+                        this.fallbackNotification(title, body);
+                    }
+                }, 1000);
+                return true;
             }
         },
 
-        // 降级方案：直接使用 Notification（可能会在 http 页面失败）
+        // 降级方案：使用传统的 Notification
         fallbackNotification: function(title, body) {
             try {
-                // 尝试直接使用 Notification
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification(title, { body: body });
+                    // 在 HTTPS 环境下，这个应该能工作
+                    const notification = new Notification(title, { 
+                        body: body,
+                        icon: '🔔',
+                        requireInteraction: true 
+                    });
+                    setTimeout(() => notification.close(), 5000);
                     return true;
                 }
             } catch (e) {
-                console.error('降级通知也失败', e);
-                alert('通知发送失败，请确保：\n1. 已开启通知权限\n2. 使用 https 访问\n\n错误: ' + e.message);
+                console.error('降级通知失败:', e);
+                alert('通知发送失败。请在浏览器设置中允许此网站的通知权限。');
             }
             return false;
         },
@@ -982,10 +998,8 @@
                 return;
             }
             
-            const success = this.sendNotification('✅ 测试通知', '通知功能正常工作！');
-            if (!success) {
-                alert('发送测试通知失败，请检查控制台');
-            }
+            console.log('发送测试通知...');
+            this.sendNotification('✅ 测试通知', '通知功能正常工作！');
         },
 
         getLunarDay: function(date) {
@@ -1110,7 +1124,6 @@
             countEl.textContent = `近${reminders.length}个提醒`;
         },
 
-        // ✅ 修复：使用新的 sendNotification 方法
         checkAndNotify: function() {
             console.log('检查通知...', new Date().toLocaleTimeString());
             
