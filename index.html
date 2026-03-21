@@ -1,1461 +1,1260 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>农历提醒 · 初一十五买水果</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #f8f4f0;
-            display: flex;
-            justify-content: center;
-            padding: 12px;
-            min-height: 100vh;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-        
-        .container {
-            max-width: 420px;
-            width: 100%;
-            background: white;
-            border-radius: 32px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            padding: 20px 16px 30px;
-            position: relative;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding: 0 4px;
-        }
-        
-        .header h1 {
-            font-size: 1.6rem;
-            font-weight: 600;
-            color: #2c3e50;
-            letter-spacing: 1px;
-        }
-        
-        .menu-btn {
-            width: 44px;
-            height: 44px;
-            background: #f0ebe6;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            color: #8b6b4d;
-            cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .menu-btn:active {
-            background: #e0d6cc;
-            transform: scale(0.95);
-        }
-        
-        .month-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #f9f3ec;
-            padding: 10px 16px;
-            border-radius: 50px;
-            margin-bottom: 20px;
-        }
-        
-        .nav-btn {
-            width: 40px;
-            height: 40px;
-            background: white;
-            border: none;
-            border-radius: 30px;
-            font-size: 1.2rem;
-            color: #8b6b4d;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .nav-btn:active {
-            background: #8b6b4d;
-            color: white;
-            transform: scale(0.95);
-        }
-        
-        #currentMonthYear {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #5d3e2e;
-        }
-        
-        .default-reminder-toggle {
-            background: #f9f3ec;
-            border-radius: 40px;
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-        }
-        
-        .toggle-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #5d3e2e;
-            font-weight: 500;
-        }
-        
-        .toggle-label span {
-            font-size: 1.2rem;
-        }
-        
-        .toggle-switch {
-            width: 52px;
-            height: 28px;
-            background: #d4b8a8;
-            border-radius: 30px;
-            position: relative;
-            transition: background 0.2s;
-            pointer-events: none;
-        }
-        
-        .toggle-switch.active {
-            background: #c43e4c;
-        }
-        
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 30px;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .toggle-switch.active::after {
-            transform: translateX(24px);
-        }
-        
-        .reminder-note {
-            font-size: 0.8rem;
-            color: #aa8c78;
-            margin-top: 4px;
-        }
-        
-        .weekdays {
-            display: flex;
-            margin-bottom: 8px;
-            padding: 0 4px;
-        }
-        
-        .weekdays span {
-            flex: 1;
-            text-align: center;
-            font-weight: 500;
-            color: #aa8c78;
-            font-size: 0.9rem;
-        }
-        
-        .weekdays span:last-child {
-            color: #c43e4c;
-        }
-        
-        .calendar {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        
-        .calendar td {
-            text-align: center;
-            vertical-align: top;
-            padding: 8px 4px;
-            border: none;
-            position: relative;
-            height: 70px;
-            width: 14.28%;
-        }
-        
-        .solar-date {
-            font-size: 1rem;
-            font-weight: 500;
-            color: #2c3e50;
-        }
-        
-        .lunar-date {
-            font-size: 0.7rem;
-            color: #aa8c78;
-            margin-top: 2px;
-            white-space: nowrap;
-        }
-        
-        .reminder-badge {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background: #c43e4c;
-            border-radius: 10px;
-            margin-top: 2px;
-        }
-        
-        .has-reminder .solar-date {
-            font-weight: 600;
-            color: #c43e4c;
-        }
-        
-        .today {
-            background: #fff0e5;
-            border-radius: 30px;
-        }
-        
-        .today .solar-date {
-            color: #c43e4c;
-            font-weight: 700;
-        }
-        
-        .empty-cell {
-            background: #faf8f6;
-        }
-        
-        .reminder-section {
-            background: #f9f3ec;
-            border-radius: 24px;
-            padding: 16px;
-            margin-top: 10px;
-        }
-        
-        .section-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 14px;
-        }
-        
-        .section-title span {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #5d3e2e;
-        }
-        
-        .reminder-list {
-            list-style: none;
-        }
-        
-        .reminder-item {
-            background: white;
-            border-radius: 40px;
-            padding: 12px 18px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-        }
-        
-        .reminder-icon {
-            width: 36px;
-            height: 36px;
-            background: #fceae5;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
-        
-        .reminder-content {
-            flex: 1;
-        }
-        
-        .reminder-title {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 2px;
-        }
-        
-        .reminder-meta {
-            font-size: 0.8rem;
-            color: #aa8c78;
-        }
-        
-        .reminder-days {
-            background: #c43e4c;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        
-        .empty-reminder {
-            text-align: center;
-            color: #aa8c78;
-            padding: 20px;
-            background: white;
-            border-radius: 40px;
-        }
-        
-        .add-btn {
-            background: white;
-            border: 1px dashed #d4b8a8;
-            border-radius: 50px;
-            padding: 14px;
-            text-align: center;
-            color: #8b6b4d;
-            font-weight: 500;
-            margin-top: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .add-btn:active {
-            background: #f0ebe6;
-            transform: scale(0.98);
-        }
-        
-        .menu-dropdown {
-            position: absolute;
-            top: 70px;
-            right: 20px;
-            background: white;
-            border-radius: 24px;
-            width: 200px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            z-index: 100;
-            display: none;
-            overflow: hidden;
-        }
-        
-        .menu-dropdown.show {
-            display: block;
-        }
-        
-        .menu-item {
-            padding: 16px 20px;
-            border-bottom: 1px solid #f0eae4;
-            cursor: pointer;
-            color: #2c3e50;
-            transition: background 0.2s;
-        }
-        
-        .menu-item:active {
-            background: #f9f3ec;
-        }
-        
-        .menu-item:last-child {
-            border-bottom: none;
-        }
-        
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: 32px;
-            padding: 24px;
-            width: 100%;
-            max-width: 360px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .modal-header h3 {
-            color: #2c3e50;
-        }
-        
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #aa8c78;
-            padding: 8px;
-        }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            color: #5d3e2e;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-        
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #e0d6cc;
-            border-radius: 40px;
-            font-size: 1rem;
-            background: #faf8f6;
-        }
-        
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            padding: 8px 0;
-        }
-        
-        .radio-group label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: normal;
-        }
-        
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 24px;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 40px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background: #c43e4c;
-            color: white;
-        }
-        
-        .btn-primary:active {
-            background: #a6323e;
-            transform: scale(0.98);
-        }
-        
-        .btn-secondary {
-            background: #f0ebe6;
-            color: #5d3e2e;
-        }
-        
-        .btn-secondary:active {
-            background: #e0d6cc;
-            transform: scale(0.98);
-        }
-        
-        .custom-reminders {
-            margin-top: 16px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .custom-item {
-            background: #faf8f6;
-            border-radius: 20px;
-            padding: 12px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .custom-info {
-            flex: 1;
-        }
-        
-        .custom-title {
-            font-weight: 500;
-            color: #2c3e50;
-        }
-        
-        .custom-date {
-            font-size: 0.8rem;
-            color: #aa8c78;
-        }
-        
-        .custom-delete {
-            color: #c43e4c;
-            font-size: 1.2rem;
-            padding: 8px;
-            cursor: pointer;
-        }
-        
-        .permission-note {
-            background: #fff8e7;
-            border-radius: 40px;
-            padding: 10px 16px;
-            margin-bottom: 16px;
-            font-size: 0.85rem;
-            color: #8b6b4d;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .permission-note button {
-            background: #8b6b4d;
-            color: white;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-size: 0.8rem;
-            cursor: pointer;
-        }
+<!DOCTYPE html>  <html lang="zh">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <title>农历提醒 · 精准时间提醒</title>  
+    <style>  
+        * {  
+            box-sizing: border-box;  
+            margin: 0;  
+            padding: 0;  
+        }  body {  
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;  
+        background: #f8f4f0;  
+        display: flex;  
+        justify-content: center;  
+        padding: 12px;  
+        min-height: 100vh;  
+    }  
+      .modal-content {
+    animation: slideUp 0.25s ease;
+}
 
-        .status-box {
-            background: #f0ebe6;
-            border-radius: 20px;
-            padding: 12px;
-            margin-bottom: 16px;
-            text-align: center;
-            font-size: 14px;
-        }
-        
-        .status-granted {
-            color: #2e7d32;
-            font-weight: bold;
-        }
-        
-        .status-denied {
-            color: #c43e4c;
-            font-weight: bold;
-        }
-        
-        .sw-status {
-            font-size: 12px;
-            margin-top: 4px;
-            color: #666;
-        }
-
-        .test-button-container {
-            position: fixed;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: center;
-            z-index: 10000;
-            pointer-events: none;
-        }
-        
-        .test-button {
-            background: #c43e4c;
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: bold;
-            box-shadow: 0 4px 20px rgba(196, 62, 76, 0.5);
-            cursor: pointer;
-            pointer-events: auto;
-            border: 2px solid white;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .test-button:active {
-            transform: scale(0.95);
-        }
-        
-        .test-button:disabled {
-            opacity: 0.5;
-            animation: none;
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1>🌙 农历提醒</h1>
-        <div class="menu-btn" id="menuBtn">☰</div>
-    </div>
-    
-    <div class="menu-dropdown" id="menuDropdown">
-        <div class="menu-item" id="addCustomReminder">➕ 添加自定义提醒</div>
-        <div class="menu-item" id="manageReminders">📋 管理自定义提醒</div>
-        <div class="menu-item" id="requestPermission">🔔 开启通知</div>
-    </div>
-    
-    <div id="permissionNote" class="permission-note" style="display: none;">
-        <span>🔕 通知未开启，收不到提醒</span>
-        <button id="enableNotification">立即开启</button>
-    </div>
-
-    <div id="permissionStatus" class="status-box">
-        检查通知权限...
-        <div id="swStatus" class="sw-status"></div>
-    </div>
-    
-    <div class="month-nav">
-        <button class="nav-btn" id="prevMonth">←</button>
-        <span id="currentMonthYear">2026年3月</span>
-        <button class="nav-btn" id="nextMonth">→</button>
-    </div>
-    
-    <div class="default-reminder-toggle" id="defaultReminderContainer">
-        <div class="toggle-label">
-            <span>🍎</span>
-            <div>
-                初一十五买水果
-                <div class="reminder-note">提前3天提醒</div>
-            </div>
-        </div>
-        <div class="toggle-switch active" id="defaultReminderToggle"></div>
-    </div>
-    
-    <div class="weekdays">
-        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-    </div>
-    
-    <table class="calendar" id="calendar"><td>
-    
-    <div class="reminder-section">
-        <div class="section-title">
-            <span>📢 即将提醒</span>
-            <span style="font-size:0.8rem; color:#aa8c78;" id="reminderCount"></span>
-        </div>
-        
-        <ul class="reminder-list" id="reminderList">
-            <li class="empty-reminder">加载中...</li>
-        </ul>
-        
-        <div class="add-btn" id="showAddReminder">
-            + 添加自定义提醒
-        </div>
-    </div>
-</div>
-
-<!-- 添加自定义提醒模态框 -->
-<div id="addReminderModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>添加提醒</h3>
-            <button class="close-btn" id="closeAddModal">&times;</button>
-        </div>
-        
-        <div class="form-group">
-            <label>提醒类型</label>
-            <div class="radio-group">
-                <label><input type="radio" name="reminderType" value="lunar" checked> 农历</label>
-                <label><input type="radio" name="reminderType" value="solar"> 公历</label>
-            </div>
-        </div>
-        
-        <div class="form-group" id="lunarMonthGroup">
-            <label>农历月份</label>
-            <select id="lunarMonth">
-                <option value="1">正月</option>
-                <option value="2">二月</option>
-                <option value="3">三月</option>
-                <option value="4">四月</option>
-                <option value="5">五月</option>
-                <option value="6">六月</option>
-                <option value="7">七月</option>
-                <option value="8">八月</option>
-                <option value="9">九月</option>
-                <option value="10">十月</option>
-                <option value="11">冬月</option>
-                <option value="12">腊月</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>日期</label>
-            <input type="number" id="reminderDay" placeholder="例如：15" min="1" max="30" value="15">
-        </div>
-        
-        <div class="form-group">
-            <label>是否闰月</label>
-            <label><input type="checkbox" id="isLeap"> 闰月</label>
-        </div>
-        
-        <div class="form-group" id="solarGroup" style="display: none;">
-            <label>公历日期</label>
-            <input type="date" id="solarDate">
-        </div>
-        
-        <div class="form-group">
-            <label>提醒内容</label>
-            <input type="text" id="reminderTitle" placeholder="例如：买水果" value="买水果">
-        </div>
-
-        <div class="form-group">
-            <label>提醒时间</label>
-            <input type="time" id="reminderTime" value="09:00">
-        </div>
-        
-        <div class="form-group">
-            <label>提前几天提醒</label>
-            <input type="number" id="daysBefore" min="0" max="30" value="3">
-        </div>
-        
-        <div class="form-group">
-            <label>重复</label>
-            <select id="repeatType">
-                <option value="monthly">每月</option>
-                <option value="yearly">每年</option>
-            </select>
-        </div>
-        
-        <div class="form-actions">
-            <button class="btn btn-secondary" id="cancelAdd">取消</button>
-            <button class="btn btn-primary" id="saveReminder">保存</button>
-        </div>
-    </div>
-</div>
-
-<!-- 管理自定义提醒模态框 -->
-<div id="manageRemindersModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>自定义提醒</h3>
-            <button class="close-btn" id="closeManageModal">&times;</button>
-        </div>
-        
-        <div id="customRemindersList" class="custom-reminders">
-            <!-- 动态加载 -->
-        </div>
-        
-        <div class="form-actions">
-            <button class="btn btn-secondary" id="closeManage">关闭</button>
-        </div>
-    </div>
-</div>
-
-<div class="test-button-container">
-    <button id="testNotificationBtn" class="test-button" disabled>
-        ⚠️ 等待 Service Worker...
-    </button>
-</div>
-
-<script>
-(function() {
-    // 完整的 Service Worker 代码
-    const SW_SCRIPT = `
-        self.addEventListener('install', function(event) {
-            console.log('[SW] 安装中');
-            self.skipWaiting();
-        });
-        
-        self.addEventListener('activate', function(event) {
-            console.log('[SW] 激活中');
-            event.waitUntil(clients.claim());
-        });
-        
-        self.addEventListener('notificationclick', function(event) {
-            console.log('[SW] 点击通知:', event.notification);
-            event.notification.close();
-            event.waitUntil(
-                clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(clientList) {
-                    if (clientList.length > 0) {
-                        return clientList[0].focus();
-                    }
-                    return clients.openWindow('/');
-                })
-            );
-        });
-        
-        self.addEventListener('message', function(event) {
-            console.log('[SW] 收到消息:', event.data);
-        });
-    `;
-
-    const App = {
-        state: {
-            currentYear: new Date().getFullYear(),
-            currentMonth: new Date().getMonth(),
-            today: new Date(),
-            customReminders: [],
-            defaultReminderEnabled: true,
-            defaultReminderTime: "09:00",
-            swRegistration: null,
-            swReady: false
-        },
-
-        dom: {},
-
-        init: function() {
-            this.cacheDOM();
-            this.loadData();
-            this.registerServiceWorker();
-            this.renderCalendar();
-            this.updateRemindersList();
-            this.updateDefaultToggleUI();
-            this.bindEvents();
-            
-            setTimeout(() => this.checkAndNotify(), 3000);
-            setInterval(() => this.checkAndNotify(), 60000);
-        },
-
-        cacheDOM: function() {
-            this.dom.calendar = document.getElementById('calendar');
-            this.dom.currentMonthYear = document.getElementById('currentMonthYear');
-            this.dom.prevMonth = document.getElementById('prevMonth');
-            this.dom.nextMonth = document.getElementById('nextMonth');
-            this.dom.reminderList = document.getElementById('reminderList');
-            this.dom.reminderCount = document.getElementById('reminderCount');
-            this.dom.defaultReminderToggle = document.getElementById('defaultReminderToggle');
-            this.dom.defaultReminderContainer = document.getElementById('defaultReminderContainer');
-            this.dom.permissionStatus = document.getElementById('permissionStatus');
-            this.dom.swStatus = document.getElementById('swStatus');
-            
-            this.dom.menuBtn = document.getElementById('menuBtn');
-            this.dom.menuDropdown = document.getElementById('menuDropdown');
-            this.dom.addCustomReminder = document.getElementById('addCustomReminder');
-            this.dom.manageReminders = document.getElementById('manageReminders');
-            this.dom.requestPermission = document.getElementById('requestPermission');
-            
-            this.dom.permissionNote = document.getElementById('permissionNote');
-            this.dom.enableNotification = document.getElementById('enableNotification');
-            this.dom.showAddReminder = document.getElementById('showAddReminder');
-            
-            this.dom.addReminderModal = document.getElementById('addReminderModal');
-            this.dom.closeAddModal = document.getElementById('closeAddModal');
-            this.dom.cancelAdd = document.getElementById('cancelAdd');
-            this.dom.saveReminder = document.getElementById('saveReminder');
-            
-            this.dom.manageRemindersModal = document.getElementById('manageRemindersModal');
-            this.dom.closeManageModal = document.getElementById('closeManageModal');
-            this.dom.closeManage = document.getElementById('closeManage');
-            this.dom.customRemindersList = document.getElementById('customRemindersList');
-            
-            this.dom.reminderTitle = document.getElementById('reminderTitle');
-            this.dom.reminderDay = document.getElementById('reminderDay');
-            this.dom.lunarMonth = document.getElementById('lunarMonth');
-            this.dom.isLeap = document.getElementById('isLeap');
-            this.dom.solarDate = document.getElementById('solarDate');
-            this.dom.daysBefore = document.getElementById('daysBefore');
-            this.dom.repeatType = document.getElementById('repeatType');
-            this.dom.reminderTime = document.getElementById('reminderTime');
-            
-            this.dom.reminderTypeRadios = document.querySelectorAll('input[name="reminderType"]');
-            this.dom.lunarMonthGroup = document.getElementById('lunarMonthGroup');
-            this.dom.solarGroup = document.getElementById('solarGroup');
-            
-            this.dom.testNotificationBtn = document.getElementById('testNotificationBtn');
-        },
-
-        registerServiceWorker: function() {
-            if (!('serviceWorker' in navigator)) {
-                if (this.dom.swStatus) this.dom.swStatus.innerHTML = '❌ 浏览器不支持 Service Worker';
-                return;
-            }
-            
-            // 创建一个 Blob URL 作为 Service Worker
-            const blob = new Blob([SW_SCRIPT], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(blob);
-            
-            console.log('注册 Service Worker:', swUrl);
-            
-            navigator.serviceWorker.register(swUrl)
-                .then(registration => {
-                    console.log('Service Worker 注册成功', registration);
-                    this.state.swRegistration = registration;
-                    
-                    // 等待 Service Worker 激活
-                    if (registration.active) {
-                        this.onSWReady(registration);
-                    } else if (registration.installing) {
-                        registration.installing.addEventListener('statechange', (e) => {
-                            if (e.target.state === 'activated') {
-                                this.onSWReady(registration);
-                            }
-                        });
-                    } else if (registration.waiting) {
-                        registration.waiting.addEventListener('statechange', (e) => {
-                            if (e.target.state === 'activated') {
-                                this.onSWReady(registration);
-                            }
-                        });
-                    }
-                    
-                    return navigator.serviceWorker.ready;
-                })
-                .then(registration => {
-                    console.log('Service Worker 已就绪', registration);
-                    this.onSWReady(registration);
-                })
-                .catch(error => {
-                    console.error('Service Worker 注册失败:', error);
-                    if (this.dom.swStatus) this.dom.swStatus.innerHTML = '❌ Service Worker 注册失败';
-                });
-        },
-        
-        onSWReady: function(registration) {
-            this.state.swRegistration = registration;
-            this.state.swReady = true;
-            
-            if (this.dom.swStatus) {
-                this.dom.swStatus.innerHTML = '✅ Service Worker 已就绪';
-            }
-            
-            if (this.dom.testNotificationBtn) {
-                this.dom.testNotificationBtn.disabled = false;
-                this.dom.testNotificationBtn.innerHTML = '⚠️ 立即测试通知';
-            }
-            
-            // 更新权限显示
-            this.checkNotificationPermission();
-        },
-
-        loadData: function() {
-            try {
-                const saved = localStorage.getItem('lunar_reminders_v14');
-                if (saved) {
-                    this.state.customReminders = JSON.parse(saved);
-                }
-            } catch (e) {}
-            this.state.customReminders = this.state.customReminders.map(r => ({
-                ...r,
-                time: r.time || "09:00"
-            }));
-        },
-
-        saveData: function() {
-            localStorage.setItem('lunar_reminders_v14', JSON.stringify(this.state.customReminders));
-        },
-
-        checkNotificationPermission: function() {
-            if (!("Notification" in window)) {
-                this.dom.permissionStatus.innerHTML = '❌ 浏览器不支持通知';
-                return;
-            }
-            
-            const status = Notification.permission;
-            let swText = this.state.swReady ? '✅ SW就绪' : '⏳ SW加载中...';
-            
-            if (status === 'granted') {
-                this.dom.permissionStatus.innerHTML = `✅ 通知权限：<span class="status-granted">已开启</span><div class="sw-status">${swText}</div>`;
-                if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'none';
-            } else if (status === 'denied') {
-                this.dom.permissionStatus.innerHTML = `❌ 通知权限：<span class="status-denied">已拒绝</span><div class="sw-status">${swText}</div>`;
-                if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'flex';
-            } else {
-                this.dom.permissionStatus.innerHTML = `❓ 通知权限：<span>未设置</span><div class="sw-status">${swText}</div>`;
-                if (this.dom.permissionNote) this.dom.permissionNote.style.display = 'flex';
-            }
-        },
-
-        requestNotificationPermission: async function() {
-            if (!("Notification" in window)) { 
-                alert('浏览器不支持通知'); 
-                return; 
-            }
-            
-            try {
-                const permission = await Notification.requestPermission();
-                this.checkNotificationPermission();
-                
-                if (permission === 'granted') {
-                    alert('✅ 通知已开启！等待 Service Worker 就绪后点击测试按钮');
-                }
-            } catch (e) {
-                console.error('请求失败', e);
-            }
-        },
-
-        // 使用 Service Worker 发送通知
-        sendNotification: function(title, message) {
-            if (!this.state.swReady || !this.state.swRegistration) {
-                console.log('Service Worker 未就绪');
-                alert('Service Worker 还在加载中，请稍后重试');
-                return false;
-            }
-            
-            if (Notification.permission !== 'granted') {
-                alert('请先开启通知权限');
-                return false;
-            }
-            
-            try {
-                this.state.swRegistration.showNotification(title, {
-                    body: message,
-                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
-                    badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'50\' y=\'90\' font-size=\'90\' text-anchor=\'middle\'%3E🔔%3C/text%3E%3C/svg%3E',
-                    vibrate: [200, 100, 200],
-                    requireInteraction: true,
-                    tag: 'notification-' + Date.now()
-                }).then(() => {
-                    console.log('✅ 通知发送成功');
-                    return true;
-                }).catch(error => {
-                    console.error('通知发送失败:', error);
-                    alert('通知发送失败: ' + error.message);
-                    return false;
-                });
-                return true;
-            } catch (e) {
-                console.error('通知错误:', e);
-                alert('通知错误: ' + e.message);
-                return false;
-            }
-        },
-
-        sendTestNotification: function() {
-            if (!this.state.swReady) {
-                alert('Service Worker 还未就绪，请稍后重试\n等待顶部显示"SW就绪"后再测试');
-                return;
-            }
-            
-            const now = new Date();
-            const timeStr = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
-            this.sendNotification('✅ 农历提醒测试', '现在时间：' + timeStr + '\n\n通知功能正常！');
-        },
-
-        getLunarDay: function(date) {
-            return date.getDate();
-        },
-
-        updateDefaultToggleUI: function() {
-            if (this.dom.defaultReminderToggle) {
-                if (this.state.defaultReminderEnabled) {
-                    this.dom.defaultReminderToggle.classList.add('active');
-                } else {
-                    this.dom.defaultReminderToggle.classList.remove('active');
-                }
-            }
-        },
-
-        renderCalendar: function() {
-            const year = this.state.currentYear;
-            const month = this.state.currentMonth;
-            const firstDay = new Date(year, month, 1);
-            const startWeekday = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
-            let html = '<tbody>‹';
-            let cellCount = 0;
-            
-            for (let i = 0; i < startWeekday; i++) {
-                html += '<td class="empty-cell">‹';
-                cellCount++;
-            }
-            
-            for (let d = 1; d <= daysInMonth; d++) {
-                if (cellCount % 7 === 0 && cellCount !== 0) html += '‹‹';
-                
-                const date = new Date(year, month, d);
-                const isToday = date.toDateString() === this.state.today.toDateString();
-                const lunarDay = this.getLunarDay(date);
-                const isSpecial = (lunarDay === 1 || lunarDay === 15);
-                const hasReminder = isSpecial && this.state.defaultReminderEnabled;
-                
-                let className = '';
-                if (isToday) className = 'today';
-                if (hasReminder) className += ' has-reminder';
-                
-                html += `<td class="${className}">`;
-                html += `<div class="solar-date">${d}</div>`;
-                html += `<div class="lunar-date">${lunarDay}</div>`;
-                if (hasReminder) html += '<div class="reminder-badge"></div>';
-                html += '‹';
-                
-                cellCount++;
-            }
-            
-            while (cellCount % 7 !== 0) {
-                html += '<td class="empty-cell">‹';
-                cellCount++;
-            }
-            html += '‹</tbody>';
-            
-            const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-            this.dom.currentMonthYear.textContent = `${year}年${monthNames[month]}`;
-            this.dom.calendar.innerHTML = html;
-        },
-
-        updateRemindersList: function() {
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            const reminders = [];
-
-            for (let i = 0; i <= 7; i++) {
-                const checkDate = new Date(today);
-                checkDate.setDate(today.getDate() + i);
-                const lunarDay = this.getLunarDay(checkDate);
-                
-                if (this.state.defaultReminderEnabled && (lunarDay === 1 || lunarDay === 15)) {
-                    reminders.push({
-                        date: new Date(checkDate),
-                        title: '初一十五买水果',
-                        time: this.state.defaultReminderTime,
-                        daysDiff: i
-                    });
-                }
-
-                this.state.customReminders.forEach(r => {
-                    if (r.type === 'lunar' && r.repeat === 'monthly') {
-                        if (parseInt(r.day) === lunarDay) {
-                            reminders.push({
-                                date: new Date(checkDate),
-                                title: r.title,
-                                time: r.time,
-                                daysDiff: i
-                            });
-                        }
-                    }
-                });
-            }
-
-            reminders.sort((a,b) => a.date - b.date);
-
-            const listEl = this.dom.reminderList;
-            const countEl = this.dom.reminderCount;
-            if (reminders.length === 0) {
-                listEl.innerHTML = '<li class="empty-reminder">暂无即将提醒</li>';
-                countEl.textContent = '';
-                return;
-            }
-
-            let html = '';
-            reminders.slice(0,5).forEach(r => {
-                const diff = r.daysDiff;
-                const diffText = diff === 0 ? '今天' : diff === 1 ? '明天' : `${diff}天后`;
-                html += `<li class="reminder-item">
-                    <div class="reminder-icon">⏰</div>
-                    <div class="reminder-content">
-                        <div class="reminder-title">${r.title}</div>
-                        <div class="reminder-meta">${r.date.getMonth()+1}/${r.date.getDate()} ${r.time || '09:00'} · ${diffText}</div>
-                    </div>
-                    <div class="reminder-days">${diffText}</div>
-                </li>`;
-            });
-            listEl.innerHTML = html;
-            countEl.textContent = `近${reminders.length}个提醒`;
-        },
-
-        checkAndNotify: function() {
-            if (Notification.permission !== 'granted' || !this.state.swReady) {
-                return;
-            }
-            
-            const now = new Date();
-            const todayStr = now.toDateString();
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-
-            if (this.state.defaultReminderEnabled) {
-                const lunarToday = this.getLunarDay(now);
-                if (lunarToday === 1 || lunarToday === 15) {
-                    const [defHour, defMin] = this.state.defaultReminderTime.split(':').map(Number);
-                    
-                    if (currentHour === defHour && currentMinute === defMin) {
-                        const key = `default_${todayStr}`;
-                        const lastNotified = localStorage.getItem(key);
-                        
-                        if (!lastNotified) {
-                            this.sendNotification('🌙 农历提醒', '今天初一/十五，记得买水果 🍎');
-                            localStorage.setItem(key, now.getTime().toString());
-                        }
-                    }
-                }
-            }
-
-            this.state.customReminders.forEach(r => {
-                if (!r.time) return;
-                
-                const [remHour, remMin] = r.time.split(':').map(Number);
-                
-                if (currentHour === remHour && currentMinute === remMin) {
-                    if (r.repeat === 'monthly') {
-                        const dayOfMonth = now.getDate();
-                        if (parseInt(r.day) === dayOfMonth) {
-                            const key = `custom_${r.id}_${todayStr}`;
-                            const lastNotified = localStorage.getItem(key);
-                            
-                            if (!lastNotified) {
-                                this.sendNotification('📅 自定义提醒', r.title);
-                                localStorage.setItem(key, now.getTime().toString());
-                            }
-                        }
-                    }
-                }
-            });
-        },
-
-        toggleDefaultReminder: function() {
-            this.state.defaultReminderEnabled = !this.state.defaultReminderEnabled;
-            this.updateDefaultToggleUI();
-            this.renderCalendar();
-            this.updateRemindersList();
-        },
-
-        openAddModal: function() {
-            if (this.dom.reminderTitle) this.dom.reminderTitle.value = '买水果';
-            if (this.dom.reminderDay) this.dom.reminderDay.value = '15';
-            if (this.dom.daysBefore) this.dom.daysBefore.value = '3';
-            if (this.dom.reminderTime) this.dom.reminderTime.value = '09:00';
-            
-            document.querySelectorAll('input[name="reminderType"]').forEach(radio => {
-                if (radio.value === 'lunar') radio.checked = true;
-            });
-            
-            if (this.dom.solarGroup) this.dom.solarGroup.style.display = 'none';
-            if (this.dom.lunarMonthGroup) this.dom.lunarMonthGroup.style.display = 'block';
-            
-            if (this.dom.addReminderModal) {
-                this.dom.addReminderModal.style.display = 'flex';
-            }
-        },
-
-        saveCustomReminder: function() {
-            const type = document.querySelector('input[name="reminderType"]:checked')?.value || 'lunar';
-            const title = this.dom.reminderTitle?.value.trim() || '提醒';
-            const time = this.dom.reminderTime?.value || "09:00";
-            const daysBefore = parseInt(this.dom.daysBefore?.value) || 0;
-            const repeat = this.dom.repeatType?.value || 'monthly';
-            
-            let reminder = {
-                id: Date.now(),
-                type,
-                title,
-                daysBefore,
-                repeat,
-                time,
-            };
-
-            if (type === 'lunar') {
-                reminder.month = this.dom.lunarMonth?.value || '1';
-                reminder.day = this.dom.reminderDay?.value || '15';
-                reminder.isLeap = this.dom.isLeap?.checked || false;
-            } else {
-                const solarDate = this.dom.solarDate?.value;
-                if (!solarDate) { 
-                    alert('请选择公历日期'); 
-                    return; 
-                }
-                reminder.solarDate = solarDate;
-            }
-
-            this.state.customReminders.push(reminder);
-            this.saveData();
-            this.closeModal('add');
-            this.updateRemindersList();
-            
-            alert('提醒添加成功！\n时间: ' + time);
-        },
-
-        closeModal: function(modal) {
-            if (modal === 'add' && this.dom.addReminderModal) {
-                this.dom.addReminderModal.style.display = 'none';
-            }
-            if (modal === 'manage' && this.dom.manageRemindersModal) {
-                this.dom.manageRemindersModal.style.display = 'none';
-            }
-        },
-
-        showManage: function() {
-            const listDiv = this.dom.customRemindersList;
-            if (!listDiv) return;
-            
-            if (this.state.customReminders.length === 0) {
-                listDiv.innerHTML = '<div class="empty-reminder">暂无自定义提醒</div>';
-            } else {
-                let html = '';
-                this.state.customReminders.forEach(r => {
-                    html += `<div class="custom-item" data-id="${r.id}">
-                        <div class="custom-info">
-                            <div class="custom-title">${r.title} (${r.time || '09:00'})</div>
-                            <div class="custom-date">${r.type==='lunar'?'农历':'公历'} · 每月</div>
-                        </div>
-                        <span class="custom-delete" data-id="${r.id}">🗑️</span>
-                    </div>`;
-                });
-                listDiv.innerHTML = html;
-
-                listDiv.querySelectorAll('.custom-delete').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const id = Number(btn.dataset.id);
-                        this.state.customReminders = this.state.customReminders.filter(r => r.id !== id);
-                        this.saveData();
-                        this.showManage();
-                        this.updateRemindersList();
-                    });
-                });
-            }
-            
-            if (this.dom.manageRemindersModal) {
-                this.dom.manageRemindersModal.style.display = 'flex';
-            }
-        },
-
-        bindEvents: function() {
-            if (this.dom.prevMonth) {
-                this.dom.prevMonth.addEventListener('click', () => {
-                    this.state.currentMonth--;
-                    if (this.state.currentMonth < 0) {
-                        this.state.currentMonth = 11;
-                        this.state.currentYear--;
-                    }
-                    this.renderCalendar();
-                    this.updateRemindersList();
-                });
-            }
-            
-            if (this.dom.nextMonth) {
-                this.dom.nextMonth.addEventListener('click', () => {
-                    this.state.currentMonth++;
-                    if (this.state.currentMonth > 11) {
-                        this.state.currentMonth = 0;
-                        this.state.currentYear++;
-                    }
-                    this.renderCalendar();
-                    this.updateRemindersList();
-                });
-            }
-
-            if (this.dom.menuBtn && this.dom.menuDropdown) {
-                this.dom.menuBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.dom.menuDropdown.classList.toggle('show');
-                });
-                
-                document.addEventListener('click', (e) => {
-                    if (this.dom.menuBtn && this.dom.menuDropdown) {
-                        if (!this.dom.menuBtn.contains(e.target) && !this.dom.menuDropdown.contains(e.target)) {
-                            this.dom.menuDropdown.classList.remove('show');
-                        }
-                    }
-                });
-            }
-
-            if (this.dom.defaultReminderContainer) {
-                this.dom.defaultReminderContainer.addEventListener('click', () => this.toggleDefaultReminder());
-            }
-
-            if (this.dom.addCustomReminder) {
-                this.dom.addCustomReminder.addEventListener('click', () => {
-                    if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
-                    this.openAddModal();
-                });
-            }
-            
-            if (this.dom.manageReminders) {
-                this.dom.manageReminders.addEventListener('click', () => {
-                    if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
-                    this.showManage();
-                });
-            }
-            
-            if (this.dom.requestPermission) {
-                this.dom.requestPermission.addEventListener('click', () => {
-                    if (this.dom.menuDropdown) this.dom.menuDropdown.classList.remove('show');
-                    this.requestNotificationPermission();
-                });
-            }
-
-            if (this.dom.showAddReminder) {
-                this.dom.showAddReminder.addEventListener('click', () => this.openAddModal());
-            }
-
-            if (this.dom.closeAddModal) {
-                this.dom.closeAddModal.addEventListener('click', () => this.closeModal('add'));
-            }
-            
-            if (this.dom.cancelAdd) {
-                this.dom.cancelAdd.addEventListener('click', () => this.closeModal('add'));
-            }
-            
-            if (this.dom.closeManageModal) {
-                this.dom.closeManageModal.addEventListener('click', () => this.closeModal('manage'));
-            }
-            
-            if (this.dom.closeManage) {
-                this.dom.closeManage.addEventListener('click', () => this.closeModal('manage'));
-            }
-
-            if (this.dom.saveReminder) {
-                this.dom.saveReminder.addEventListener('click', () => this.saveCustomReminder());
-            }
-
-            if (this.dom.reminderTypeRadios) {
-                this.dom.reminderTypeRadios.forEach(radio => {
-                    radio.addEventListener('change', (e) => {
-                        if (e.target.value === 'lunar') {
-                            if (this.dom.solarGroup) this.dom.solarGroup.style.display = 'none';
-                            if (this.dom.lunarMonthGroup) this.dom.lunarMonthGroup.style.display = 'block';
-                        } else {
-                            if (this.dom.solarGroup) this.dom.solarGroup.style.display = 'block';
-                            if (this.dom.lunarMonthGroup) this.dom.lunarMonthGroup.style.display = 'none';
-                        }
-                    });
-                });
-            }
-
-            if (this.dom.enableNotification) {
-                this.dom.enableNotification.addEventListener('click', () => this.requestNotificationPermission());
-            }
-
-            if (this.dom.testNotificationBtn) {
-                this.dom.testNotificationBtn.addEventListener('click', () => {
-                    this.sendTestNotification();
-                });
-            }
-        }
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => App.init());
-    } else {
-        App.init();
+@keyframes slideUp {
+    from {
+        transform: translateY(40px);
+        opacity: 0;
     }
-})();
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+    .container {  
+        max-width: 420px;  
+        width: 100%;  
+        background: white;  
+        border-radius: 32px;  
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);  
+        overflow: hidden;  
+        padding: 20px 16px 30px;  
+        position: relative;  
+    }  
+      
+    .header {  
+        display: flex;  
+        justify-content: space-between;  
+        align-items: center;  
+        margin-bottom: 12px;  
+        padding: 0 4px;  
+    }  
+      
+    .header h1 {  
+        font-size: 1.6rem;  
+        font-weight: 600;  
+        color: #2c3e50;  
+        letter-spacing: 1px;  
+    }  
+      
+    .menu-btn {  
+        width: 44px;  
+        height: 44px;  
+        background: #f0ebe6;  
+        border-radius: 30px;  
+        display: flex;  
+        align-items: center;  
+        justify-content: center;  
+        font-size: 1.4rem;  
+        color: #8b6b4d;  
+        cursor: pointer;  
+        transition: all 0.2s;  
+        user-select: none;  
+    }  
+      
+    .menu-btn:active {  
+        background: #e0d6cc;  
+        transform: scale(0.95);  
+    }  
+      
+    .month-nav {  
+        display: flex;  
+        align-items: center;  
+        justify-content: space-between;  
+        background: #f9f3ec;  
+        padding: 10px 16px;  
+        border-radius: 50px;  
+        margin-bottom: 20px;  
+    }  
+      
+    .nav-btn {  
+        width: 40px;  
+        height: 40px;  
+        background: white;  
+        border: none;  
+        border-radius: 30px;  
+        font-size: 1.2rem;  
+        color: #8b6b4d;  
+        cursor: pointer;  
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);  
+        transition: all 0.2s;  
+        display: flex;  
+        align-items: center;  
+        justify-content: center;  
+    }  
+      
+    .nav-btn:active {  
+        background: #8b6b4d;  
+        color: white;  
+        transform: scale(0.95);  
+    }  
+      
+    #currentMonthYear {  
+        font-size: 1.3rem;  
+        font-weight: 600;  
+        color: #5d3e2e;  
+    }  
+      
+    .default-reminder-toggle {  
+        background: #f9f3ec;  
+        border-radius: 40px;  
+        padding: 12px 16px;  
+        margin-bottom: 16px;  
+        display: flex;  
+        align-items: center;  
+        justify-content: space-between;  
+        cursor: pointer;  
+    }  
+      .calendar td {
+    transition: all 0.15s ease;
+}
+
+    .calendar td:active {
+    transform: scale(0.92);
+    background: #f0ebe6;
+}
+    .toggle-label {  
+        display: flex;  
+        align-items: center;  
+        gap: 8px;  
+        color: #5d3e2e;  
+        font-weight: 500;  
+    }  
+      
+    .toggle-label span {  
+        font-size: 1.2rem;  
+    }  
+      
+    .toggle-switch {  
+        width: 52px;  
+        height: 28px;  
+        background: #d4b8a8;  
+        border-radius: 30px;  
+        position: relative;  
+        transition: background 0.2s;  
+        pointer-events: none;  
+    }  
+      
+    .toggle-switch.active {  
+        background: #c43e4c;  
+    }  
+      
+    .toggle-switch::after {  
+        content: '';  
+        position: absolute;  
+        width: 24px;  
+        height: 24px;  
+        background: white;  
+        border-radius: 30px;  
+        top: 2px;  
+        left: 2px;  
+        transition: transform 0.2s;  
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);  
+    }  
+      
+    .toggle-switch.active::after {  
+        transform: translateX(24px);  
+    }  
+      
+    .reminder-note {  
+        font-size: 0.8rem;  
+        color: #aa8c78;  
+        margin-top: 4px;  
+    }  
+      
+    .weekdays {  
+        display: flex;  
+        margin-bottom: 8px;  
+        padding: 0 4px;  
+    }  
+      
+    .weekdays span {  
+        flex: 1;  
+        text-align: center;  
+        font-weight: 500;  
+        color: #aa8c78;  
+        font-size: 0.9rem;  
+    }  
+      
+    .weekdays span:last-child {  
+        color: #c43e4c;  
+    }  
+      
+    .calendar {  
+        width: 100%;  
+        border-collapse: collapse;  
+        background: white;  
+        border-radius: 20px;  
+        overflow: hidden;  
+        margin-bottom: 20px;  
+    }  
+      
+    .calendar td {  
+        text-align: center;  
+        vertical-align: top;  
+        padding: 8px 4px;  
+        border: none;  
+        position: relative;  
+        height: 70px;  
+        width: 14.28%;  
+    }  
+      
+    .solar-date {  
+        font-size: 1rem;  
+        font-weight: 500;  
+        color: #2c3e50;  
+    }  
+      
+    .lunar-date {  
+        font-size: 0.7rem;  
+        color: #aa8c78;  
+        margin-top: 2px;  
+        white-space: nowrap;  
+    }  
+      
+    .reminder-badge {  
+        display: inline-block;  
+        width: 6px;  
+        height: 6px;  
+        background: #c43e4c;  
+        border-radius: 10px;  
+        margin-top: 2px;  
+    }  
+      
+    .has-reminder .solar-date {  
+        font-weight: 600;  
+        color: #c43e4c;  
+    }  
+      
+    .today {  
+        background: #fff0e5;  
+        border-radius: 30px;  
+    }  
+      
+    .today .solar-date {  
+        color: #c43e4c;  
+        font-weight: 700;  
+    }  
+      
+    .empty-cell {  
+        background: #faf8f6;  
+    }  
+      
+    .reminder-section {  
+        background: #f9f3ec;  
+        border-radius: 24px;  
+        padding: 16px;  
+        margin-top: 10px;  
+    }  
+      
+    .section-title {  
+        display: flex;  
+        align-items: center;  
+        gap: 8px;  
+        margin-bottom: 14px;  
+    }  
+      
+    .section-title span {  
+        font-size: 1.1rem;  
+        font-weight: 600;  
+        color: #5d3e2e;  
+    }  
+      
+    .reminder-list {  
+        list-style: none;  
+    }  
+      
+    .reminder-item {  
+        background: white;  
+        border-radius: 40px;  
+        padding: 12px 18px;  
+        margin-bottom: 10px;  
+        display: flex;  
+        align-items: center;  
+        gap: 12px;  
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);  
+    }  
+      
+    .reminder-icon {  
+        width: 36px;  
+        height: 36px;  
+        background: #fceae5;  
+        border-radius: 30px;  
+        display: flex;  
+        align-items: center;  
+        justify-content: center;  
+        font-size: 1.2rem;  
+    }  
+      
+    .reminder-content {  
+        flex: 1;  
+    }  
+      
+    .reminder-title {  
+        font-weight: 600;  
+        color: #2c3e50;  
+        margin-bottom: 2px;  
+    }  
+      
+    .reminder-meta {  
+        font-size: 0.8rem;  
+        color: #aa8c78;  
+    }  
+      
+    .reminder-days {  
+        background: #c43e4c;  
+        color: white;  
+        padding: 4px 12px;  
+        border-radius: 30px;  
+        font-size: 0.8rem;  
+        font-weight: 500;  
+        white-space: nowrap;  
+    }  
+      
+    .empty-reminder {  
+        text-align: center;  
+        color: #aa8c78;  
+        padding: 20px;  
+        background: white;  
+        border-radius: 40px;  
+    }  
+      
+    .add-btn {  
+        background: white;  
+        border: 1px dashed #d4b8a8;  
+        border-radius: 50px;  
+        padding: 14px;  
+        text-align: center;  
+        color: #8b6b4d;  
+        font-weight: 500;  
+        margin-top: 16px;  
+        cursor: pointer;  
+        transition: all 0.2s;  
+    }  
+      
+    .add-btn:active {  
+        background: #f0ebe6;  
+        transform: scale(0.98);  
+    }  
+      
+    .menu-dropdown {  
+        position: absolute;  
+        top: 70px;  
+        right: 20px;  
+        background: white;  
+        border-radius: 24px;  
+        width: 220px;  
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);  
+        z-index: 100;  
+        display: none;  
+        overflow: hidden;  
+    }  
+      
+    .menu-dropdown.show {  
+        display: block;  
+    }  
+      
+    .menu-item {  
+        padding: 16px 20px;  
+        border-bottom: 1px solid #f0eae4;  
+        cursor: pointer;  
+        color: #2c3e50;  
+        transition: background 0.2s;  
+    }  
+      
+    .menu-item:active {  
+        background: #f9f3ec;  
+    }  
+      
+    .menu-item:last-child {  
+        border-bottom: none;  
+    }  
+      
+    .modal {  
+        position: fixed;  
+        top: 0;  
+        left: 0;  
+        right: 0;  
+        bottom: 0;  
+        background: rgba(0,0,0,0.5);  
+        display: flex;  
+        align-items: center;  
+        justify-content: center;  
+        z-index: 1000;  
+        padding: 20px;  
+    }  
+      
+    .modal-content {  
+        background: white;  
+        border-radius: 32px;  
+        padding: 24px;  
+        width: 100%;  
+        max-width: 360px;  
+        max-height: 85vh;  
+        overflow-y: auto;  
+    }  
+      
+    .modal-header {  
+        display: flex;  
+        justify-content: space-between;  
+        align-items: center;  
+        margin-bottom: 20px;  
+    }  
+      
+    .modal-header h3 {  
+        color: #2c3e50;  
+    }  
+      
+    .close-btn {  
+        background: none;  
+        border: none;  
+        font-size: 1.5rem;  
+        cursor: pointer;  
+        color: #aa8c78;  
+        padding: 8px;  
+    }  
+      
+    .form-group {  
+        margin-bottom: 16px;  
+    }  
+      
+    .form-group label {  
+        display: block;  
+        margin-bottom: 6px;  
+        color: #5d3e2e;  
+        font-weight: 500;  
+        font-size: 0.9rem;  
+    }  
+      
+    .form-group input,  
+    .form-group select {  
+        width: 100%;  
+        padding: 14px;  
+        border: 1px solid #e0d6cc;  
+        border-radius: 40px;  
+        font-size: 1rem;  
+        background: #faf8f6;  
+    }  
+      
+    .radio-group {  
+        display: flex;  
+        gap: 20px;  
+        padding: 8px 0;  
+    }  
+      
+    .radio-group label {  
+        display: flex;  
+        align-items: center;  
+        gap: 6px;  
+        font-weight: normal;  
+    }  
+      
+    .form-actions {  
+        display: flex;  
+        gap: 10px;  
+        margin-top: 24px;  
+    }  
+      
+    .btn {  
+        flex: 1;  
+        padding: 14px;  
+        border: none;  
+        border-radius: 40px;  
+        font-size: 1rem;  
+        cursor: pointer;  
+        transition: all 0.2s;  
+    }  
+      
+    .btn-primary {  
+        background: #c43e4c;  
+        color: white;  
+    }  
+      
+    .btn-primary:active {  
+        background: #a6323e;  
+        transform: scale(0.98);  
+    }  
+      
+    .btn-secondary {  
+        background: #f0ebe6;  
+        color: #5d3e2e;  
+    }  
+      
+    .btn-secondary:active {  
+        background: #e0d6cc;  
+        transform: scale(0.98);  
+    }  
+      
+    .custom-reminders {  
+        margin-top: 16px;  
+        max-height: 300px;  
+        overflow-y: auto;  
+    }  
+      
+    .custom-item {  
+        background: #faf8f6;  
+        border-radius: 20px;  
+        padding: 12px;  
+        margin-bottom: 8px;  
+        display: flex;  
+        justify-content: space-between;  
+        align-items: center;  
+    }  
+      
+    .custom-info {  
+        flex: 1;  
+    }  
+      
+    .custom-title {  
+        font-weight: 500;  
+        color: #2c3e50;  
+    }  
+      
+    .custom-date {  
+        font-size: 0.75rem;  
+        color: #aa8c78;  
+    }  
+      
+    .custom-delete {  
+        color: #c43e4c;  
+        font-size: 1.2rem;  
+        padding: 8px;  
+        cursor: pointer;  
+    }  
+      
+    .toast {  
+        position: fixed;  
+        bottom: 30px;  
+        left: 50%;  
+        transform: translateX(-50%);  
+        background: rgba(44, 62, 80, 0.9);  
+        color: white;  
+        padding: 12px 24px;  
+        border-radius: 50px;  
+        font-size: 0.9rem;  
+        z-index: 2000;  
+        backdrop-filter: blur(5px);  
+    }  
+      
+    .permission-note {  
+        background: #fff8e7;  
+        border-radius: 40px;  
+        padding: 10px 16px;  
+        margin-bottom: 16px;  
+        font-size: 0.85rem;  
+        color: #8b6b4d;  
+        display: flex;  
+        align-items: center;  
+        justify-content: space-between;  
+    }  
+      
+    .permission-note button {  
+        background: #8b6b4d;  
+        color: white;  
+        border: none;  
+        padding: 6px 14px;  
+        border-radius: 30px;  
+        font-size: 0.8rem;  
+        cursor: pointer;  
+    }  
+
+    .time-row {  
+        display: flex;  
+        gap: 12px;  
+        align-items: center;  
+    }  
+    .time-row select {  
+        flex: 1;  
+    }  
+      
+    .checkbox-wrapper {  
+        display: flex;  
+        align-items: center;  
+        gap: 10px;  
+        padding: 8px 0;  
+    }  
+      
+    .checkbox-wrapper input {  
+        width: 20px;  
+        height: 20px;  
+        margin: 0;  
+        cursor: pointer;  
+    }  
+      
+    .checkbox-wrapper label {  
+        margin: 0;  
+        cursor: pointer;  
+        font-weight: 500;  
+        color: #5d3e2e;  
+    }  
+      
+    .hint-text {  
+        font-size: 0.7rem;  
+        color: #aa8c78;  
+        margin-top: 4px;  
+        padding-left: 30px;  
+    }  
+    .selected {
+    background: #ffe4d6;
+    border-radius: 20px;
+}
+
+.selected .solar-date {
+    color: #c43e4c;
+    font-weight: 700;
+}
+</style>
+
+</head>  
+<body>  
+<div class="container">  
+    <div class="header">  
+        <h1>🌙 农历提醒</h1>  
+        <div class="menu-btn" id="menuBtn">☰</div>  
+    </div>  <div class="menu-dropdown" id="menuDropdown">  
+    <div class="menu-item" id="addCustomReminder">➕ 添加自定义提醒</div>  
+    <div class="menu-item" id="manageReminders">📋 管理自定义提醒</div>  
+    <div class="menu-item" id="requestPermission">🔔 开启通知</div>  
+</div>  
+  
+<div id="permissionNote" class="permission-note" style="display: none;">  
+    <span>🔕 通知未开启，收不到提醒</span>  
+    <button id="enableNotification">开启</button>  
+</div>  
+  
+<div class="month-nav">  
+    <button class="nav-btn" id="prevMonth">←</button>  
+    <span id="currentMonthYear">2026年3月</span>  
+    <button class="nav-btn" id="nextMonth">→</button>  
+</div>  
+  
+<div class="default-reminder-toggle" id="defaultReminderContainer">  
+    <div class="toggle-label">  
+        <span>🍎</span>  
+        <div>  
+            初一十五买水果  
+            <div class="reminder-note">提前3天提醒 · 可设置时间</div>  
+        </div>  
+    </div>  
+    <div class="toggle-switch active" id="defaultReminderToggle"></div>  
+</div>  
+  
+<div class="weekdays">  
+    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>  
+</div>  
+  
+<table class="calendar" id="calendar"></table>  
+  
+<div class="reminder-section">  
+    <div class="section-title">  
+        <span>📢 即将提醒</span>  
+        <span style="font-size:0.8rem; color:#aa8c78;" id="reminderCount"></span>  
+    </div>  
+      
+    <ul class="reminder-list" id="reminderList">  
+        <li class="empty-reminder">加载中...</li>  
+    </ul>  
+      
+    <div class="add-btn" id="showAddReminder">  
+        + 添加自定义提醒  
+    </div>  
+</div>
+
+</div>  <!-- 添加提醒模态框 -->  <div id="addReminderModal" class="modal" style="display: none;">  
+    <div class="modal-content">  
+        <div class="modal-header">  
+            <h3>添加提醒</h3>  
+            <button class="close-btn" id="closeAddModal">&times;</button>  
+        </div>  <div class="form-group">  
+        <label>提醒类型</label>  
+        <div class="radio-group">  
+            <label><input type="radio" name="reminderType" value="lunar" checked> 农历</label>  
+            <label><input type="radio" name="reminderType" value="solar"> 公历</label>  
+        </div>  
+    </div>  
+      
+    <div id="lunarFields">  
+        <div class="form-group">  
+            <label>农历月份</label>  
+            <select id="lunarMonth">  
+                <option value="1">正月</option><option value="2">二月</option><option value="3">三月</option><option value="4">四月</option>  
+                <option value="5">五月</option><option value="6">六月</option><option value="7">七月</option><option value="8">八月</option>  
+                <option value="9">九月</option><option value="10">十月</option><option value="11">冬月</option><option value="12">腊月</option>  
+            </select>  
+        </div>  
+          
+        <div class="form-group">  
+            <label>农历日期（中文数字）</label>  
+            <select id="lunarDaySelect"></select>  
+        </div>  
+          
+        <div class="form-group" id="leapContainer">  
+            <div class="checkbox-wrapper">  
+                <input type="checkbox" id="isLeap">  
+                <label for="isLeap">闰月（仅当年有闰月时生效）</label>  
+            </div>  
+            <div class="hint-text">✓ 适用于忌日、生日等每年一次的特殊日期<br>✓ 每月重复的提醒无需勾选此项</div>  
+        </div>  
+    </div>  
+      
+    <div id="solarFields" style="display: none;">  
+        <div class="form-group">  
+            <label>公历日期</label>  
+            <input type="date" id="solarDate">  
+        </div>  
+    </div>  
+      
+    <div class="form-group">  
+        <label>提醒内容</label>  
+        <input type="text" id="reminderTitle" placeholder="例如：买水果" value="买水果">  
+    </div>  
+      
+    <div class="form-group">  
+        <label>提前几天提醒</label>  
+        <select id="daysBeforeSelect">  
+            <option value="0">当天</option>  
+            <option value="1">提前1天</option>  
+            <option value="2">提前2天</option>  
+            <option value="3" selected>提前3天</option>  
+            <option value="4">提前4天</option>  
+            <option value="5">提前5天</option>  
+            <option value="6">提前6天</option>  
+            <option value="7">提前7天</option>  
+        </select>  
+    </div>  
+      
+    <div class="form-group">  
+        <label>⏰ 通知时间 (每日定时)</label>  
+        <div class="time-row">  
+            <select id="reminderHour">  
+                <script>for(let i=0;i<24;i++) document.write(`<option value="${i}">${i.toString().padStart(2,'0')}时</option>`);</script>  
+            </select>  
+            <select id="reminderMinute">  
+                <script>for(let i=0;i<60;i+=5) document.write(`<option value="${i}">${i.toString().padStart(2,'0')}分</option>`);</script>  
+            </select>  
+        </div>  
+        <div class="reminder-note">每日该时刻触发提醒（若当天有提醒事项）</div>  
+    </div>  
+      
+    <div class="form-group">  
+        <label>重复</label>  
+        <select id="repeatType">  
+            <option value="none">不需重复（仅提醒一次）</option>  
+            <option value="monthly" selected>每月（每月同一天）</option>  
+            <option value="yearly">每年（每年同一天）</option>  
+        </select>  
+    </div>  
+      
+    <div class="form-actions">  
+        <button class="btn btn-secondary" id="cancelAdd">取消</button>  
+        <button class="btn btn-primary" id="saveReminder">保存</button>  
+    </div>  
+</div>
+
+</div>  <div id="manageRemindersModal" class="modal" style="display: none;">  
+    <div class="modal-content">  
+        <div class="modal-header">  
+            <h3>自定义提醒</h3>  
+            <button class="close-btn" id="closeManageModal">&times;</button>  
+        </div>  
+        <div id="customRemindersList" class="custom-reminders"></div>  
+        <div class="form-actions">  
+            <button class="btn btn-secondary" id="closeManage">关闭</button>  
+        </div>  
+    </div>  
+</div>  <script>  
+(function() {  
+    const LUNAR_DAY_NAMES = [  
+        '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',  
+        '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',  
+        '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'  
+    ];  
+      
+    function populateLunarDaySelect() {  
+        const select = document.getElementById('lunarDaySelect');  
+        if (!select) return;  
+        select.innerHTML = '';  
+        for (let i = 1; i <= 30; i++) {  
+            const option = document.createElement('option');  
+            option.value = i;  
+            option.textContent = LUNAR_DAY_NAMES[i-1];  
+            if (i === 15) option.selected = true;  
+            select.appendChild(option);  
+        }  
+    }  
+      
+    const LunarCalendar = {  
+        lunarInfo: [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,  
+            0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,  
+            0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,  
+            0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,  
+            0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,  
+            0x06ca0,0x0b550,0x15355,0x04da0,0x0a5d0,0x14573,0x052d0,0x0a9a8,0x0e950,0x06aa0,  
+            0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,  
+            0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b5a0,0x195a6,  
+            0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,  
+            0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0,  
+            0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,  
+            0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,  
+            0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,  
+            0x05aa0,0x076a3,0x096d0,0x04bd7,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,  
+            0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0],  
+        monthNames: ['正月','二月','三月','四月','五月','六月','七月','八月','九月','十月','冬月','腊月'],  
+        dayNames: LUNAR_DAY_NAMES,  
+        solarToLunar: function(year, month, day) {  
+            let offset = (Date.UTC(year, month-1, day) - Date.UTC(1900,0,31))/86400000;  
+            let lunarYear=1900, yearDays=0;  
+            for(let i=0; i<this.lunarInfo.length && lunarYear<2100; i++){  
+                yearDays = this.getLunarYearDays(lunarYear);  
+                if(offset<yearDays) break;  
+                offset-=yearDays; lunarYear++;  
+            }  
+            let leapMonth = this.getLeapMonth(lunarYear);  
+            let isLeap=false, lunarMonth=1, monthDays=0;  
+            for(let i=1;i<=12;i++){  
+                if(leapMonth>0 && i==leapMonth+1 && !isLeap){ monthDays=this.getLeapMonthDays(lunarYear); isLeap=true; i--;}  
+                else monthDays = this.getLunarMonthDays(lunarYear,i);  
+                if(offset<monthDays) break;  
+                offset-=monthDays;  
+                if(leapMonth>0 && i==leapMonth && isLeap) isLeap=false;  
+                lunarMonth++;  
+            }  
+            return { year:lunarYear, month:lunarMonth, day:offset+1, isLeap:isLeap };  
+        },  
+        getLunarYearDays:function(year){ let sum=348; for(let i=0x8000;i>0x8;i>>=1) sum+=(this.lunarInfo[year-1900]&i)?1:0; return sum+this.getLeapMonthDays(year); },  
+        getLunarMonthDays:function(year,month){ return (this.lunarInfo[year-1900] & (0x10000>>month))?30:29; },  
+        getLeapMonth:function(year){ return this.lunarInfo[year-1900]&0xf; },  
+        getLeapMonthDays:function(year){ let leap=this.getLeapMonth(year); return leap?((this.lunarInfo[year-1900]&0x10000)?30:29):0; }  
+    };  
+  
+    const App = {  
+        state: { currentYear: new Date().getFullYear(), currentMonth: new Date().getMonth(), today: new Date(),  
+        selectedDate: null,
+                 customReminders: [], defaultReminderEnabled: true, notificationPermission: false,  
+                 defaultReminderTime: { hour: 9, minute: 0 } },  
+        dom: {},  
+        init(){  
+            populateLunarDaySelect();  
+            this.cacheDOM();   
+            this.loadData();   
+            this.checkNotificationPermission();  
+            this.renderCalendar();   
+            this.updateReminders();   
+            this.bindEvents();   
+            this.updateDefaultReminderToggle();  
+            this.scheduleDailyCheck(); 
+            
+        },  
+        cacheDOM(){  
+            const ids=['calendar','currentMonthYear','prevMonth','nextMonth','reminderList','reminderCount',  
+                       'menuBtn','menuDropdown','addCustomReminder','manageReminders','requestPermission',  
+                       'permissionNote','enableNotification','showAddReminder','addReminderModal','closeAddModal',  
+                       'cancelAdd','saveReminder','manageRemindersModal','closeManageModal','closeManage',  
+                       'customRemindersList','defaultReminderToggle','defaultReminderContainer',  
+                       'reminderHour','reminderMinute','lunarMonth','lunarDaySelect','isLeap','solarDate','reminderTitle','daysBeforeSelect','repeatType',  
+                       'lunarFields','solarFields','leapContainer'];  
+            ids.forEach(id=>{ this.dom[id]=document.getElementById(id); });  
+            this.dom.reminderType = document.getElementsByName('reminderType');  
+        },  
+        loadData(){  
+            try{  
+                let saved = localStorage.getItem('lunar_reminders_v15');  
+                if(saved) this.state.customReminders = JSON.parse(saved);  
+                let defEnabled = localStorage.getItem('default_reminder_enabled_v15');  
+                if(defEnabled!==null) this.state.defaultReminderEnabled = defEnabled==='true';  
+                let defTime = localStorage.getItem('default_reminder_time_v15');  
+                if(defTime) this.state.defaultReminderTime = JSON.parse(defTime);  
+            }catch(e){}  
+        },  
+        saveData(){  
+            localStorage.setItem('lunar_reminders_v15', JSON.stringify(this.state.customReminders));  
+            localStorage.setItem('default_reminder_enabled_v15', this.state.defaultReminderEnabled);  
+            localStorage.setItem('default_reminder_time_v15', JSON.stringify(this.state.defaultReminderTime));  
+        },  
+        getLunarDate(date){  
+    let y=date.getFullYear(), m=date.getMonth()+1, d=date.getDate();  
+    let lunar = LunarCalendar.solarToLunar(y,m,d);  
+    return { 
+        lunarYear:lunar.year, 
+        lunarMonth:lunar.month, 
+        lunarDay:lunar.day,   
+        lunarDayName:LunarCalendar.dayNames[lunar.day-1],  
+        lunarMonthName:LunarCalendar.monthNames[lunar.month-1], 
+        isLeap:lunar.isLeap 
+    };
+},
+checkDateHasReminder(date,lunar){
+    if(this.state.defaultReminderEnabled && (lunar.lunarDay===1||lunar.lunarDay===15)) return true;
+    return this.state.customReminders.some(r=>this.matchReminder(r,date,lunar));
+},
+matchReminder(rem,date,lunar){
+    if(rem.type==='lunar'){
+        if(rem.repeat==='monthly'){
+            return lunar.lunarDay===rem.lunarDay;
+        }else if(rem.repeat==='yearly'){
+            return lunar.lunarMonth===rem.lunarMonth && lunar.lunarDay===rem.lunarDay;
+        }else{
+            return lunar.lunarMonth===rem.lunarMonth && lunar.lunarDay===rem.lunarDay;
+        }
+    }else{
+        if(rem.repeat==='monthly'){
+            return date.getDate()===rem.solarDay;
+        }else if(rem.repeat==='yearly'){
+            return date.getMonth()+1===rem.solarMonth && date.getDate()===rem.solarDay;
+        }else{
+            return date.getMonth()+1===rem.solarMonth && date.getDate()===rem.solarDay;
+        }
+    }
+},
+        checkNotificationPermission(){  
+            if(!('Notification' in window)) return;  
+            this.state.notificationPermission = Notification.permission === 'granted';  
+            if(Notification.permission === 'default') this.dom.permissionNote.style.display = 'flex';  
+            else if(Notification.permission === 'denied'){ this.dom.permissionNote.style.display='flex'; this.dom.enableNotification.style.display='none'; }  
+            else this.dom.permissionNote.style.display='none';  
+        },  
+        requestNotificationPermission(){  
+            Notification.requestPermission().then(perm=>{ if(perm==='granted'){ this.dom.permissionNote.style.display='none'; this.state.notificationPermission=true; this.showToast('✓ 通知已开启'); } });  
+        },  
+        updateDefaultReminderToggle(){ this.dom.defaultReminderToggle.classList[this.state.defaultReminderEnabled?'add':'remove']('active'); },  
+        toggleDefaultReminder(){ this.state.defaultReminderEnabled=!this.state.defaultReminderEnabled; this.saveData(); this.updateDefaultReminderToggle(); this.renderCalendar(); this.updateReminders(); this.showToast(this.state.defaultReminderEnabled?'初一十五提醒已开启':'已关闭'); },  
+        renderCalendar(){
+    let {currentYear,currentMonth}=this.state;
+    let firstDay = new Date(currentYear, currentMonth, 1);
+    let lastDay = new Date(currentYear, currentMonth + 1, 0);
+    this.dom.currentMonthYear.textContent = `${currentYear}年 ${currentMonth + 1}月`;
+    
+    let firstDayWeek = firstDay.getDay();
+    let startOffset = (firstDayWeek === 0 ? 6 : firstDayWeek - 1);
+    
+    let html = '';
+    let date = 1;
+    
+    for (let row = 0; row < 6; row++) {
+        html += '<tr>';
+        
+        for (let col = 0; col < 7; col++) {
+            
+            if (row === 0 && col < startOffset) {
+                html += '<td class="empty-cell"></td>';
+            
+            } else if (date > lastDay.getDate()) {
+                html += '<td class="empty-cell"></td>';
+            
+            } else {
+                let currentDate = new Date(currentYear, currentMonth, date);
+                let lunar = this.getLunarDate(currentDate);
+                let hasReminder = this.checkDateHasReminder(currentDate, lunar);
+                let isToday = currentDate.toDateString() === this.state.today.toDateString();
+                
+                let tdClass = '';
+                if (isToday) tdClass += 'today ';
+                if (hasReminder) tdClass += 'has-reminder';
+                let isSelected = this.state.selectedDate &&
+    currentDate.toDateString() === this.state.selectedDate.toDateString();
+
+if (isSelected) tdClass += 'selected ';
+                html += `<td class="${tdClass}" data-date="${currentYear}-${currentMonth}-${date}">`;
+                html += `<div class="solar-date">${date}</div>`;
+                html += `<div class="lunar-date">${lunar.lunarDayName}</div>`;
+                
+                if (hasReminder) {
+                    html += `<div class="reminder-badge"></div>`;
+                }
+                
+                html += '</td>';
+                date++;
+            }
+        }
+        
+        html += '</tr>';
+        
+        if (date > lastDay.getDate()) break;
+    }
+    
+    this.dom.calendar.innerHTML = html;
+},  
+        updateReminders(){  
+            let today=new Date(); today.setHours(0,0,0,0);  
+            let reminders=[];  
+            for(let i=0;i<=30;i++){  
+                let checkDate=new Date(today); checkDate.setDate(today.getDate()+i);  
+                let lunar=this.getLunarDate(checkDate);  
+                if(this.state.defaultReminderEnabled && (lunar.lunarDay===1||lunar.lunarDay===15)){  
+                    for(let db=0;db<=2;db++){  
+                        let remindDate=new Date(checkDate); remindDate.setDate(checkDate.getDate()-db);  
+                        if(remindDate>=today){  
+                            let title=(db===0?(lunar.lunarDay===1?'🙏 今天初一 · 供水果上香':'🙏 今天十五 · 供水果上香'):  
+                                      (db===1?(lunar.lunarDay===1?'⏰ 明天初一 · 记得买水果':'⏰ 明天十五 · 记得买水果'):  
+                                      (lunar.lunarDay===1?'📅 后天初一 · 记得买水果':'📅 后天十五 · 记得买水果')));  
+                            reminders.push({ date:new Date(remindDate), targetDate:new Date(checkDate), lunarDay:lunar.lunarDayName, title, type:'初一十五',  
+                                             hour: this.state.defaultReminderTime.hour, minute: this.state.defaultReminderTime.minute, daysUntil:i-db });  
+                        }  
+                    }  
+                }  
+                this.state.customReminders.forEach(rem=>{  
+                    if(this.matchReminder(rem,checkDate,lunar)){  
+                        let daysBeforeVal = rem.daysBefore;  
+                        for(let db=0;db<=daysBeforeVal;db++){  
+                            let remindDate=new Date(checkDate); remindDate.setDate(checkDate.getDate()-db);  
+                            if(remindDate>=today){  
+                                let title=db===0?`✨ 今天 · ${rem.title}`:(db===1?`⏰ 明天 · ${rem.title}`:`📅 ${db}天后 · ${rem.title}`);  
+                                reminders.push({ date:new Date(remindDate), targetDate:new Date(checkDate), lunarDay:lunar.lunarDayName, title, type:'custom',  
+                                                 hour: rem.hour!==undefined?rem.hour:9, minute: rem.minute!==undefined?rem.minute:0, daysUntil:i-db });  
+                            }  
+                        }  
+                    }  
+                });  
+            }  
+            reminders.sort((a,b)=>a.date-b.date);  
+            let unique=[], seen=new Set();  
+            reminders.forEach(r=>{ let key=`${r.date.toDateString()}-${r.title}`; if(!seen.has(key)){ seen.add(key); unique.push(r); } });  
+            let upcoming=unique.filter(r=>r.daysUntil>=0 && r.daysUntil<=7);  
+            this.renderReminderList(upcoming);  
+        },  
+        renderReminderList(reminders){  
+            let list=this.dom.reminderList;  
+            if(reminders.length===0){ list.innerHTML='<li class="empty-reminder">暂无即将到来的提醒</li>'; this.dom.reminderCount.textContent=''; return; }  
+            this.dom.reminderCount.textContent=`(${reminders.length})`;  
+            let html='';  
+            reminders.forEach(r=>{  
+                let dateStr=`${r.date.getMonth()+1}月${r.date.getDate()}日`;  
+                let icon=r.type==='初一十五'?(r.title.includes('今天')?'🙏':(r.title.includes('明天')?'⏰':'📅')):'📌';  
+                html+=`<li class="reminder-item"><div class="reminder-icon">${icon}</div><div class="reminder-content"><div class="reminder-title">${r.title}</div><div class="reminder-meta">${r.lunarDay} · ${dateStr}  ${r.hour.toString().padStart(2,'0')}:${r.minute.toString().padStart(2,'0')}</div></div><div class="reminder-days">${r.daysUntil===0?'今天':r.daysUntil+'天后'}</div></li>`;  
+            });  
+            list.innerHTML=html;  
+        },  
+        scheduleDailyCheck(){  
+            setInterval(()=>{ this.checkTimeAndNotify(); }, 60000);  
+            this.checkTimeAndNotify();  
+        },  
+        checkTimeAndNotify(){  
+            if(!this.state.notificationPermission) return;  
+            let now=new Date();  
+            let currentHour=now.getHours(), currentMinute=now.getMinutes();  
+            let todayDate=new Date(now.getFullYear(), now.getMonth(), now.getDate());  
+            let keyDate = `${todayDate.toDateString()}_${currentHour}_${currentMinute}`;  
+            if(localStorage.getItem(`last_notify_${keyDate}`)) return;  
+            let lunarToday=this.getLunarDate(todayDate);  
+            let allReminders=[];  
+            if(this.state.defaultReminderEnabled && (lunarToday.lunarDay===1||lunarToday.lunarDay===15)){  
+                let defaultHour=this.state.defaultReminderTime.hour, defaultMinute=this.state.defaultReminderTime.minute;  
+                if(currentHour===defaultHour && currentMinute===defaultMinute){  
+                    allReminders.push({ title:lunarToday.lunarDay===1?'🙏 今天初一 · 供水果上香':'🙏 今天十五 · 供水果上香' });  
+                }  
+            }  
+            this.state.customReminders.forEach(rem=>{  
+                if(this.matchReminder(rem, todayDate, lunarToday)){  
+                    let remHour=rem.hour!==undefined?rem.hour:9, remMinute=rem.minute!==undefined?rem.minute:0;  
+                    if(currentHour===remHour && currentMinute===remMinute){  
+                        allReminders.push({ title:`✨ 今日 · ${rem.title}` });  
+                    }  
+                }  
+            });  
+            if(allReminders.length>0){  
+                let body=allReminders.map(r=>r.title).join('；');  
+                new Notification('农历提醒', { body, icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="45" fill="%23c43e4c"/%3E%3Ctext x="50" y="70" font-size="50" text-anchor="middle" fill="white"%3E🌙%3C/text%3E%3C/svg%3E' });  
+                localStorage.setItem(`last_notify_${keyDate}`, 'true');  
+                setTimeout(()=>localStorage.removeItem(`last_notify_${keyDate}`), 60000);  
+            }  
+        },  
+        changeMonth(delta){  
+            this.state.currentMonth+=delta;  
+            if(this.state.currentMonth<0){ this.state.currentMonth=11; this.state.currentYear--; }  
+            else if(this.state.currentMonth>11){ this.state.currentMonth=0; this.state.currentYear++; }  
+            this.renderCalendar(); this.updateReminders();  
+        },  
+        showToast(msg){ let t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); },  
+        showDayDetail(date){
+    let modal = document.getElementById('dayDetailModal');
+    let title = document.getElementById('dayDetailTitle');
+    let list = document.getElementById('dayDetailList');
+
+    let lunar = this.getLunarDate(date);
+
+    title.textContent = `${date.getMonth()+1}月${date.getDate()}日 · ${lunar.lunarMonthName}${lunar.lunarDayName}`;
+
+    let items = [];
+
+    if(this.state.defaultReminderEnabled && (lunar.lunarDay===1 || lunar.lunarDay===15)){
+        items.push('🙏 初一/十五提醒');
+    }
+
+    this.state.customReminders.forEach(rem=>{
+        if(this.matchReminder(rem, date, lunar)){
+            items.push(`📌 ${rem.title}`);
+        }
+    });
+
+    if(items.length === 0){
+        list.innerHTML = '<div class="empty-reminder">当天没有提醒</div>';
+    }else{
+        list.innerHTML = items.map(i=>`<div class="reminder-item">${i}</div>`).join('');
+    }
+
+    modal.style.display = 'flex';
+},
+        bindEvents(){
+        this.dom.calendar.addEventListener('click',(e)=>{
+    let td = e.target.closest('td');
+    if(!td || td.classList.contains('empty-cell')) return;
+
+    let dateStr = td.dataset.date;
+    if(!dateStr) return;
+
+    let parts = dateStr.split('-');
+let date = new Date(parts[0], parts[1], parts[2]);
+
+    this.state.selectedDate = date;
+    this.renderCalendar();
+
+    this.showDayDetail(date);   // 👈 加回来
+});
+// 关闭按钮
+let closeBtn = document.getElementById('closeDayDetail');
+if(closeBtn){
+    closeBtn.addEventListener('click',()=>{
+        document.getElementById('dayDetailModal').style.display='none';
+    });
+}
+
+// 点击背景关闭
+let modal = document.getElementById('dayDetailModal');
+if(modal){
+    modal.addEventListener('click',(e)=>{
+        // 只要点的是“背景”，不是卡片
+        if(!e.target.closest('.modal-content')){
+            modal.style.display = 'none';
+        }
+    });
+}
+            this.dom.prevMonth.addEventListener('click',()=>this.changeMonth(-1));  
+            this.dom.nextMonth.addEventListener('click',()=>this.changeMonth(1));  
+            this.dom.defaultReminderContainer.addEventListener('click',()=>this.toggleDefaultReminder());  
+            this.dom.menuBtn.addEventListener('click',(e)=>{ e.stopPropagation(); this.dom.menuDropdown.classList.toggle('show'); });  
+            document.addEventListener('click',(e)=>{ if(!this.dom.menuBtn.contains(e.target) && !this.dom.menuDropdown.contains(e.target)) this.dom.menuDropdown.classList.remove('show'); });  
+            this.dom.enableNotification.addEventListener('click',()=>this.requestNotificationPermission());  
+            this.dom.requestPermission.addEventListener('click',()=>{ this.requestNotificationPermission(); this.dom.menuDropdown.classList.remove('show'); });  
+            this.dom.showAddReminder.addEventListener('click',()=>this.openAddModal());  
+            this.dom.addCustomReminder.addEventListener('click',()=>{ this.openAddModal(); this.dom.menuDropdown.classList.remove('show'); });  
+            this.dom.manageReminders.addEventListener('click',()=>{ this.openManageModal(); this.dom.menuDropdown.classList.remove('show'); });  
+            this.dom.closeAddModal.addEventListener('click',()=>this.closeAddModal());  
+            this.dom.cancelAdd.addEventListener('click',()=>this.closeAddModal());  
+            this.dom.closeManageModal.addEventListener('click',()=>this.closeManageModal());  
+            this.dom.closeManage.addEventListener('click',()=>this.closeManageModal());  
+            Array.from(this.dom.reminderType).forEach(radio=>{  
+                radio.addEventListener('change',(e)=>{  
+                    if(e.target.value==='lunar'){  
+                        this.dom.lunarFields.style.display='block';  
+                        this.dom.solarFields.style.display='none';  
+                    } else {  
+                        this.dom.lunarFields.style.display='none';  
+                        this.dom.solarFields.style.display='block';  
+                    }  
+                });  
+            });  
+            this.dom.saveReminder.addEventListener('click',()=>this.saveCustomReminder());  
+            window.addEventListener('click',(e)=>{ if(e.target.classList.contains('modal')){ this.closeAddModal(); this.closeManageModal(); } });  
+        },  
+        openAddModal(){  
+            document.querySelector('input[name="reminderType"][value="lunar"]').checked=true;  
+            this.dom.lunarFields.style.display='block';  
+            this.dom.solarFields.style.display='none';  
+            this.dom.lunarMonth.value='1';  
+            this.dom.lunarDaySelect.value='15';  
+            this.dom.isLeap.checked=false;  
+            this.dom.reminderTitle.value='买水果';  
+            this.dom.daysBeforeSelect.value='3';  
+            this.dom.repeatType.value='monthly';  
+            if(this.dom.reminderHour) this.dom.reminderHour.value='9';  
+            if(this.dom.reminderMinute) this.dom.reminderMinute.value='0';  
+            this.dom.addReminderModal.style.display='flex';  
+        },  
+        closeAddModal(){ this.dom.addReminderModal.style.display='none'; },  
+        openManageModal(){ this.renderCustomReminders(); this.dom.manageRemindersModal.style.display='flex'; },  
+        closeManageModal(){ this.dom.manageRemindersModal.style.display='none'; },  
+        renderCustomReminders(){  
+            let list=this.dom.customRemindersList;  
+            if(this.state.customReminders.length===0){ list.innerHTML='<div style="text-align:center; padding:20px;">暂无自定义提醒</div>'; return; }  
+            let html='';  
+            this.state.customReminders.forEach((rem,idx)=>{  
+                let typeText=rem.type==='lunar'?'农历':'公历';  
+                let dateText=rem.type==='lunar'?`${LunarCalendar.monthNames[rem.lunarMonth-1]}${LUNAR_DAY_NAMES[rem.lunarDay-1]}${rem.isLeap?'(闰)':''}`:`${rem.solarMonth}月${rem.solarDay}日`;  
+                let repeatText = rem.repeat==='none'?'仅一次':(rem.repeat==='monthly'?'每月':(rem.repeat==='yearly'?'每年':''));  
+                let daysBeforeText = rem.daysBefore===0?'当天':`提前${rem.daysBefore}天`;  
+                let timeText=`${(rem.hour||9).toString().padStart(2,'0')}:${(rem.minute||0).toString().padStart(2,'0')}`;  
+                html+=`<div class="custom-item"><div class="custom-info"><div class="custom-title">${rem.title}</div><div class="custom-date">${typeText} ${dateText} · ${daysBeforeText} · 每日${timeText} · ${repeatText}</div></div><div class="custom-delete" data-index="${idx}">🗑</div></div>`;  
+            });  
+            list.innerHTML=html;  
+            list.querySelectorAll('.custom-delete').forEach(btn=>{  
+                btn.addEventListener('click',(e)=>{  
+                    let index=e.target.dataset.index;  
+                    this.state.customReminders.splice(index,1);  
+                    this.saveData(); this.renderCustomReminders(); this.renderCalendar(); this.updateReminders();  
+                    this.showToast('已删除');  
+                });  
+            });  
+        },  
+        saveCustomReminder(){  
+            let type=document.querySelector('input[name="reminderType"]:checked').value;  
+            let now = new Date();  
+            let reminder={ id:Date.now(), type, title:this.dom.reminderTitle.value.trim()||'提醒', daysBefore:parseInt(this.dom.daysBeforeSelect.value), repeat:this.dom.repeatType.value,  
+                           hour: parseInt(this.dom.reminderHour.value)||9, minute: parseInt(this.dom.reminderMinute.value)||0 };  
+            if(type==='lunar'){  
+                reminder.lunarMonth=parseInt(this.dom.lunarMonth.value);  
+                reminder.lunarDay=parseInt(this.dom.lunarDaySelect.value);  
+                reminder.isLeap=this.dom.isLeap.checked;  
+                if(reminder.lunarDay<1||reminder.lunarDay>30){ this.showToast('农历日期有效范围1-30'); return; }  
+                if(reminder.repeat === 'none') {  
+                    reminder.targetYear = now.getFullYear();  
+                    reminder.targetMonth = reminder.lunarMonth;  
+                    reminder.targetDay = reminder.lunarDay;  
+                }  
+            }else{  
+                if(!this.dom.solarDate.value){ this.showToast('请选择公历日期'); return; }  
+                let [year,month,day]=this.dom.solarDate.value.split('-').map(Number);  
+                reminder.solarMonth=month; reminder.solarDay=day;  
+                if(reminder.repeat === 'none') {  
+                    reminder.targetYear = year;  
+                    reminder.targetMonth = month;  
+                    reminder.targetDay = day;  
+                }  
+            }  
+            this.state.customReminders.push(reminder);  
+            this.saveData(); this.closeAddModal(); this.renderCalendar(); this.updateReminders();  
+            this.showToast('✓ 提醒已添加，每日定时提醒');  
+        }  
+    };  
+    App.init();  
+})();  
 </script>
-</body>
+<div id="dayDetailModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="dayDetailTitle">日期</h3>
+            <button class="close-btn" onclick="document.getElementById('dayDetailModal').style.display='none'">&times;</button>
+        </div>
+        <div id="dayDetailList">暂无提醒</div>
+    </div>
+</div>
+</body>  
 </html>
