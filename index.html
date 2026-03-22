@@ -739,6 +739,46 @@
         </div>
     </div>
 </div>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+
+<!-- 🔥 Firebase 初始化（单独一个 script） -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBxFGlrdpsuYqJMVwnI_8fjAkk-tceqGfs",
+  authDomain: "lunar-reminder-69af6.firebaseapp.com",
+  projectId: "lunar-reminder-69af6",
+  messagingSenderId: "649690588313",
+  appId: "1:649690588313:web:ca2c2edf22f4f16d118408"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const messaging = firebase.messaging();
+
+async function initPush() {
+  try {
+    const permission = await Notification.requestPermission();
+
+    if (permission !== 'granted') {
+      console.log('❌ 用户拒绝通知');
+      return;
+    }
+
+    const token = await messaging.getToken({
+      vapidKey: 'BBFLZRZEgVTXfihNR9EJPMKSdS4atsg58bE7ouCvpwqvXnnFZ4qSziCfwbyPsJj3KwOhF8NWrvsRnug'
+    });
+
+    console.log('🔥 token:', token);
+
+  } catch (err) {
+    console.error('❌ 获取token失败', err);
+  }
+}
+
+initPush();
+</script>
 
 <script>
 (function() {
