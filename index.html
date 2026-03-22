@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh">
+
 <head>
+<script>
+window.onerror = function(msg, url, line) {
+  alert('报错: ' + msg + ' 行: ' + line);
+};
+</script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#c43e4c">
     <meta charset="UTF-8">
@@ -1047,8 +1053,7 @@ initPush();
                 if (date > lastDay.getDate()) break;
             }
             
-            this.dom.calendar.innerHTML = '';
-            this.dom.calendar.appendChild(tbody);
+            this.dom.calendar.querySelector('tbody').replaceWith(tbody);
         },
         showDayDetail(date){
             this.state.selectedDate = date;
