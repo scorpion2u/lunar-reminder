@@ -766,9 +766,14 @@ async function initPush() {
       return;
     }
 
-    const token = await messaging.getToken({
-      vapidKey: 'BBFLZRZEgVTXfihNR9EJPMKSdS4atsg58bE7ouCvpwqvXnnFZ4qSziCfwbyPsJj3KwOhF8NWrvsRnug'
-    });
+    // 先注册 Firebase 专用 SW
+const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
+// 再获取 token
+const token = await messaging.getToken({
+  vapidKey: 'BBFLZRZEgVTXfihNR9EJPMKSdS4atsg58bE7ouCvpwqvXnnFZ4qSziCfwbyPsJj3KwOhF8NWrvsRnug',
+  serviceWorkerRegistration: registration
+});
 
     console.log('🔥 token:', token);
 
@@ -1374,7 +1379,6 @@ initPush();
     };
     App.init();
     if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js')
     .then(() => {
       console.log('SW 注册成功');
     })
