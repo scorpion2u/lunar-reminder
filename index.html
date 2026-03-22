@@ -772,6 +772,24 @@ async function initPush() {
 
     console.log('🔥 token:', token);
 
+// 👇 手机专用：直接弹出来 + 显示在页面
+alert('🔥 token: ' + token);
+
+// 👇 顺便显示在页面上（防止alert被拦）
+const div = document.createElement('div');
+div.style.position = 'fixed';
+div.style.bottom = '20px';
+div.style.left = '10px';
+div.style.right = '10px';
+div.style.background = '#000';
+div.style.color = '#0f0';
+div.style.padding = '10px';
+div.style.fontSize = '12px';
+div.style.zIndex = '9999';
+div.style.wordBreak = 'break-all';
+div.innerText = 'TOKEN:\n' + token;
+document.body.appendChild(div);
+
   } catch (err) {
     console.error('❌ 获取token失败', err);
   }
