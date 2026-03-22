@@ -789,7 +789,18 @@ const token = await messaging.getToken({
   vapidKey: 'BBFLZRZEgVTXfihNR9EJPMKSdS4atsg58bE7ouCvpwqvXqKhzO_VXnnFZ4qSziCfwbyPsJj3KwOhF8NWrvsRnug',
   serviceWorkerRegistration: registration
 });
-
+// 🔥 上传 token 到 Firestore
+fetch('https://firestore.googleapis.com/v1/projects/lunar-reminder-69af6/databases/(default)/documents/tokens', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    fields: {
+      token: { stringValue: token }
+    }
+  })
+});
     console.log('🔥 token:', token);
 
 // 👇 手机专用：直接弹出来 + 显示在页面
