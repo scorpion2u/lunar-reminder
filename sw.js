@@ -1,3 +1,5 @@
+const CACHE_NAME = 'v2';
+
 self.addEventListener('install', e => {
   self.skipWaiting();
   console.log('Service Worker 安装成功');
