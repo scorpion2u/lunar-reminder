@@ -1316,12 +1316,12 @@
     };
     App.init();
     if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
+  navigator.serviceWorker.register('./sw.js')
     .then(() => {
-      alert('SW 注册成功');
+      console.log('SW 注册成功');
     })
-    .catch(() => {
-      alert('SW 注册失败');
+    .catch((err) => {
+      console.error('SW 注册失败', err);
     });
 }
 })();
