@@ -790,8 +790,8 @@ const token = await messaging.getToken({
   serviceWorkerRegistration: registration
 });
 // 🔥 上传 token 到 Firestore
-fetch('https://firestore.googleapis.com/v1/projects/lunar-reminder-69af6/databases/(default)/documents/tokens', {
-  method: 'POST',
+fetch('https://firestore.googleapis.com/v1/projects/lunar-reminder-69af6/databases/(default)/documents/tokens/myDevice', {
+  method: 'PATCH',
   headers: {
     'Content-Type': 'application/json'
   },
